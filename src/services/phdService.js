@@ -1,171 +1,284 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-import Groq from 'groq-sdk';
 
-const API_KEYS = [
-  import.meta.env.VITE_GROQ_API_KEY_1,
-  import.meta.env.VITE_GROQ_API_KEY_2,
-  import.meta.env.VITE_GROQ_API_KEY_3,
-  import.meta.env.VITE_GROQ_API_KEY_4,
-  import.meta.env.VITE_GROQ_API_KEY_5,
-  import.meta.env.VITE_GROQ_API_KEY_6,
-  import.meta.env.VITE_GROQ_API_KEY_7,
-  import.meta.env.VITE_GROQ_API_KEY_8,
-].filter(Boolean);
+// Initialize backend URL
+const BACKEND_URL = 'http://localhost:3002/api'; // Use full URL to backend API
 
-let currentKeyIndex = 0;
+// Create axios instance with default config
+const api = axios.create({
+  baseURL: BACKEND_URL,
+  timeout: 15000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
 
-const getNextApiKey = () => {
-  const key = API_KEYS[currentKeyIndex];
-  currentKeyIndex = (currentKeyIndex + 1) % API_KEYS.length;
-  return key;
-};
+// Add response interceptor for error handling
+api.interceptors.response.use(
+  response => response,
+  error => {
+    console.error('API Error:', error);
+    if (error.code === 'ERR_NETWORK') {
+      throw new Error('Unable to connect to the server. Please check if the server is running.');
+    }
+    throw error;
+  }
+);
 
-const cleanText = (text) => {
-  if (!text) return '';
-  return text.replace(/\s+/g, ' ').trim();
-};
+const extractOpportunityDetails = async (html) => {
+  const $ = cheerio.load(html);
+  const opportunities = [];
 
-const extractDeadline = (text) => {
-  if (!text) return '';
-  const match = text.match(/\d{1,2}\s+[A-Za-z]+\s+\d{4}/);
-  return match ? match[0] : text.trim();
-};
+  // Try multiple selectors for opportunities
+  const selectors = [
+    '.phd-search-result',
+    '.search-result',
+    '.opportunity',
+    'article',
+    '.listing',
+    '.phd-result',
+    '.result-item',
+    '.phd-opportunity'
+  ];
 
-const extractSupervisor = (text) => {
-  if (!text) return '';
-  return text.replace(/Supervisor:\s*/i, '').trim();
-};
+  let elements = [];
+  for (const selector of selectors) {
+    elements = $(selector);
+    if (elements.length > 0) {
+      console.log(`Found ${elements.length} opportunities using selector: ${selector}`);
+      break;
+    }
+  }
 
-const determinePositionType = (title, description) => {
-  const text = (title + ' ' + description).toLowerCase();
-  if (text.includes('phd') || text.includes('doctorate') || text.includes('doctoral')) return 'phd';
-  if (text.includes('masters') || text.includes('msc') || text.includes('master of')) return 'masters';
-  if (text.includes('postdoc') || text.includes('post-doc') || text.includes('postdoctoral')) return 'postdoc';
-  if (text.includes('internship') || text.includes('intern')) return 'internship';
-  if (text.includes('research assistant') || text.includes('research associate') || text.includes('research fellow')) return 'research';
-  if (text.includes('lecturer') || text.includes('professor') || text.includes('faculty')) return 'job';
-  return 'research';
-};
-
-export const scrapePhdData = async (searchQuery) => {
-  try {
-    console.log('Fetching data for query:', searchQuery);
-    const proxyUrl = 'http://localhost:3001/api/phd';
-    const searchUrl = `${proxyUrl}/?Keywords=${encodeURIComponent(searchQuery)}`;
+  if (elements.length === 0) {
+    console.log('No opportunities found with standard selectors. Trying fallback extraction...');
     
-    const response = await axios.get(searchUrl);
-    const $ = cheerio.load(response.data);
+    // First fallback: Look for divs with specific classes
+    elements = $('div[class*="phd"], div[class*="search"], div[class*="result"]');
     
-    const opportunities = [];
-    
-    $('.phd-result').each((index, element) => {
-      try {
-        const $element = $(element);
-        const title = cleanText($element.find('h3 a, .h4 a, .h5 a').first().text());
-        const link = 'https://www.findaphd.com' + $element.find('h3 a, .h4 a, .h5 a').first().attr('href');
-        const description = cleanText($element.find('.description, .descFrag').first().text());
-        const university = cleanText($element.find('.inst-logo img').attr('alt') || $element.find('.phd-result__dept-inst--title').text());
-        const imageUrl = $element.find('.inst-logo img').attr('src');
-        const deadline = extractDeadline($element.find('.deadline, .icon-text:contains("calendar")').text());
-        const supervisor = extractSupervisor($element.find('.super:contains("Supervisor"), .icon-text:contains("Supervisor")').text());
-        const positionType = determinePositionType(title, description);
+    if (elements.length === 0) {
+      // Second fallback: Look for any div that might contain opportunity information
+      elements = $('div').filter((i, el) => {
+        const text = $(el).text().toLowerCase();
+        const hasKeywords = text.includes('phd') || 
+                          text.includes('research') ||
+                          text.includes('opportunity') ||
+                          text.includes('university') ||
+                          text.includes('department');
+                          
+        const hasTitle = $(el).find('h1, h2, h3, h4').length > 0;
+        const hasLink = $(el).find('a').length > 0;
+        
+        return hasKeywords && (hasTitle || hasLink);
+      });
+    }
+  }
 
-        if (title && description) {
-          opportunities.push({
-            id: index + 1,
-            title,
-            description,
-            university,
-            imageUrl: imageUrl ? (imageUrl.startsWith('http') ? imageUrl : 'https://www.findaphd.com' + imageUrl) : null,
-            link,
-            deadline,
-            supervisor,
-            positionType
-          });
-        }
-      } catch (err) {
-        console.error('Error processing opportunity:', err);
+  console.log(`Processing ${elements.length} potential opportunities...`);
+
+  elements.each((i, element) => {
+    try {
+      const $element = $(element);
+      
+      // Try multiple ways to find the title
+      let title = '';
+      const titleSelectors = [
+        'h1', 'h2', 'h3', 'h4',
+        '.title', '.heading',
+        'a[class*="title"]',
+        'div[class*="title"]'
+      ];
+      
+      for (const selector of titleSelectors) {
+        const titleElement = $element.find(selector).first();
+        title = titleElement.text().trim();
+        if (title) break;
       }
-    });
+
+      // Try multiple ways to find the description
+      let description = '';
+      const descriptionSelectors = [
+        'p',
+        '.description',
+        '.summary',
+        '.content',
+        'div[class*="description"]',
+        'div[class*="content"]'
+      ];
+      
+      for (const selector of descriptionSelectors) {
+        const descElement = $element.find(selector).first();
+        description = descElement.text().trim();
+        if (description) break;
+      }
+
+      // Try to find the link
+      let link = '';
+      const linkElement = $element.find('a[href*="phd"], a[href*="research"], a[href*="opportunity"]').first() || 
+                         $element.find('a').first();
+      if (linkElement.length) {
+        link = linkElement.attr('href');
+      }
+
+      // Try to find additional details
+      const university = $element.find('.university, .institution, [class*="university"], [class*="institution"]').first().text().trim();
+      const department = $element.find('.department, [class*="department"]').first().text().trim();
+      const deadline = $element.find('.deadline, [class*="deadline"], [class*="date"]').first().text().trim();
+      const supervisor = $element.find('.supervisor, [class*="supervisor"]').first().text().trim();
+
+      if (title && (description || link)) {
+        opportunities.push({
+          title,
+          description: description || 'No description available',
+          link: link ? new URL(link, 'https://www.findaphd.com').href : null,
+          university: university || null,
+          department: department || null,
+          deadline: deadline || null,
+          supervisor: supervisor || null
+        });
+      }
+    } catch (error) {
+      console.error('Error extracting opportunity details:', error);
+    }
+  });
+
+  return opportunities;
+};
+
+const cleanAndValidateJSON = (content) => {
+  try {
+    // Remove any non-JSON text that might be present
+    const jsonStart = content.indexOf('[');
+    const jsonEnd = content.lastIndexOf(']') + 1;
     
-    console.log('Scraped opportunities:', opportunities.length);
-    return await processWithGroq(opportunities);
+    if (jsonStart === -1 || jsonEnd === 0) {
+      throw new Error('No JSON array found in response');
+    }
+    
+    let jsonContent = content.slice(jsonStart, jsonEnd);
+    
+    // Clean up common JSON issues
+    jsonContent = jsonContent
+      // Fix trailing commas
+      .replace(/,(\s*[}\]])/g, '$1')
+      // Fix missing commas
+      .replace(/}(\s*){/g, '},{')
+      // Fix unescaped quotes in strings
+      .replace(/"([^"]*?)"/g, (match, p1) => `"${p1.replace(/"/g, '\\"')}"`)
+      // Remove any control characters
+      .replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+    
+    // Validate the JSON structure
+    const parsed = JSON.parse(jsonContent);
+    
+    if (!Array.isArray(parsed)) {
+      throw new Error('Response is not a JSON array');
+    }
+    
+    // Validate each opportunity object
+    return parsed.map(opp => ({
+      title: String(opp.title || ''),
+      description: String(opp.description || ''),
+      researchAreas: Array.isArray(opp.researchAreas) ? opp.researchAreas.map(String) : [],
+      requirements: String(opp.requirements || 'Not specified'),
+      university: String(opp.university || 'Not specified'),
+      department: String(opp.department || 'Not specified'),
+      supervisor: String(opp.supervisor || 'Not specified'),
+      deadline: String(opp.deadline || 'Not specified'),
+      link: String(opp.link || '')
+    }));
+    
   } catch (error) {
-    console.error('Error scraping data:', error);
-    return [];
+    throw new Error(`JSON validation failed: ${error.message}`);
   }
 };
 
-const processWithGroq = async (opportunities) => {
-  if (!opportunities.length) return [];
-  
-  try {
-    const chunkSize = Math.max(1, Math.ceil(opportunities.length / API_KEYS.length));
-    const chunks = Array.from({ length: Math.ceil(opportunities.length / chunkSize) }, (_, i) =>
-      opportunities.slice(i * chunkSize, (i + 1) * chunkSize)
-    );
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-    console.log('Processing chunks:', chunks.length);
+const structureDataWithAI = async (opportunities) => {
+  if (!opportunities || opportunities.length === 0) {
+    return [];
+  }
 
-    const processedChunks = await Promise.all(chunks.map(async (chunk, index) => {
+  const structureWithBackend = async (opportunity) => {
+    try {
+      const response = await api.post('/api/structure', opportunity);
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to structure data: ${error.message}`);
+    }
+  };
+
+  // Process opportunities in parallel
+  const structuredOpportunities = await Promise.all(
+    opportunities.map(async (opportunity) => {
       try {
-        const groq = new Groq({ apiKey: API_KEYS[index % API_KEYS.length] });
-        const prompt = `
-          For each opportunity, create a one-sentence summary that highlights:
-          1. The main research focus or job responsibility
-          2. Key requirements or qualifications
-          3. Any unique aspects or benefits
-          
-          Input: ${JSON.stringify(chunk.map(opp => ({
-            title: opp.title,
-            description: opp.description
-          })))}
-          
-          Format the response as a JSON array with objects containing:
-          {
-            "shortDescription": "one sentence summary"
-          }
-        `;
-
-        const completion = await groq.chat.completions.create({
-          messages: [{ role: "user", content: prompt }],
-          model: "llama3-8b-8192",
-        });
-
-        const content = completion.choices[0]?.message?.content;
-        if (!content) return chunk;
-
-        try {
-          const processed = JSON.parse(content);
-          return chunk.map((opp, i) => ({
-            ...opp,
-            shortDescription: processed[i]?.shortDescription || opp.description?.slice(0, 150)
-          }));
-        } catch (parseError) {
-          console.error('Error parsing Groq response:', parseError);
-          return chunk;
-        }
+        return await structureWithBackend(opportunity);
       } catch (error) {
-        console.error('Error processing chunk with Groq:', error);
-        return chunk;
+        console.error('Error structuring opportunity:', error);
+        return {
+          title: String(opportunity.title || '').trim(),
+          description: String(opportunity.description || '').trim(),
+          researchAreas: [],
+          requirements: 'Not specified',
+          university: String(opportunity.university || 'Not specified').trim(),
+          department: String(opportunity.department || 'Not specified').trim(),
+          supervisor: String(opportunity.supervisor || 'Not specified').trim(),
+          deadline: String(opportunity.deadline || 'Not specified').trim(),
+          link: String(opportunity.link || '').trim()
+        };
       }
-    }));
+    })
+  );
 
-    return processedChunks.flat().map((opp, index) => ({
-      id: index + 1,
-      title: opp.title || '',
-      description: opp.description || '',
-      shortDescription: opp.shortDescription || opp.description?.slice(0, 150) || '',
-      university: opp.university || '',
-      imageUrl: opp.imageUrl || null,
-      link: opp.link || '',
-      deadline: opp.deadline || '',
-      supervisor: opp.supervisor || '',
-      positionType: opp.positionType || 'research'
-    }));
+  return structuredOpportunities;
+};
+
+async function rateOpportunity(opportunity) {
+  try {
+    const response = await api.post('/api/rate', opportunity);
+    return response.data.rating;
   } catch (error) {
-    console.error('Error in Groq processing:', error);
+    console.error('Error rating opportunity:', error);
+    return 0;
+  }
+}
+
+export const scrapePhdData = async (keyword = '') => {
+  try {
+    console.log('Fetching opportunities...');
+    const response = await axios.get(`http://localhost:3002/api/scrape?keyword=${encodeURIComponent(keyword)}`);
+    console.log('Response received:', response.data);
+
+    if (!response.data.success || !response.data.opportunities) {
+      throw new Error('Failed to fetch opportunities');
+    }
+
+    return response.data.opportunities;
+  } catch (error) {
+    console.error('Error scraping PhD opportunities:', error);
+    throw error;
+  }
+};
+
+export const scrapePhdOpportunities = async () => {
+  try {
+    console.log('Fetching opportunities from FindAPhD...');
+    const response = await api.get('/phd');
+    console.log('Response received, parsing HTML...');
+    const opportunities = await extractOpportunityDetails(response.data);
+    console.log(`Total results found: ${opportunities.length}`);
+    
+    if (opportunities.length > 0) {
+      console.log('Structuring data with AI...');
+      const structuredOpportunities = await structureDataWithAI(opportunities);
+      return structuredOpportunities;
+    }
+    
     return opportunities;
+    
+  } catch (error) {
+    console.error('Error scraping opportunities:', error);
+    throw error;
   }
 };

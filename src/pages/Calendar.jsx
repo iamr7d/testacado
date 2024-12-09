@@ -27,6 +27,56 @@ const Calendar = () => {
   const [showEventModal, setShowEventModal] = useState(false);
   const [newEvent, setNewEvent] = useState({ title: '', date: new Date(), time: '' });
 
+  useEffect(() => {
+    // Load saved events from localStorage
+    const savedEvents = JSON.parse(localStorage.getItem('calendarEvents') || '[]');
+    const parsedEvents = savedEvents.map(event => ({
+      ...event,
+      start: new Date(event.start),
+      end: new Date(event.end)
+    }));
+    setEvents(prevEvents => [...prevEvents, ...parsedEvents]);
+
+    // Set up notifications for upcoming deadlines
+    parsedEvents.forEach(event => {
+      if (event.type === 'deadline') {
+        const deadlineDate = new Date(event.start);
+        const today = new Date();
+        const daysUntilDeadline = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24));
+        
+        // Notify for deadlines within the next week
+        if (daysUntilDeadline <= 7 && daysUntilDeadline > 0) {
+          if (Notification.permission === "granted") {
+            new Notification("Upcoming PhD Deadline", {
+              body: `Reminder: ${event.title} deadline is in ${daysUntilDeadline} days!`,
+              icon: "/favicon.ico"
+            });
+          }
+        }
+      }
+    });
+  }, []);
+
+  const eventStyleGetter = (event) => {
+    let style = {
+      backgroundColor: '#4F46E5',
+      borderRadius: '5px',
+      opacity: 0.8,
+      color: 'white',
+      border: '0px',
+      display: 'block'
+    };
+
+    if (event.type === 'deadline') {
+      style.backgroundColor = '#DC2626';
+      style.borderLeft = '4px solid #991B1B';
+    }
+
+    return {
+      style
+    };
+  };
+
   const getDaysInMonth = () => {
     const start = startOfMonth(currentDate);
     const end = endOfMonth(currentDate);
