@@ -12,7 +12,6 @@ import {
   HiExternalLink
 } from 'react-icons/hi';
 import Loading from '../components/Loading';
-import { scrapePhdData } from '../services/phdService';
 
 // Memoized Tooltip component
 const Tooltip = memo(({ children }) => (
@@ -230,7 +229,11 @@ const Opportunities = () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await scrapePhdData(keyword);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/scrape?keyword=${encodeURIComponent(keyword)}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
       const enhancedData = data.map(opp => ({
         id: opp.id,
         title: opp.title || 'Untitled Position',
@@ -246,7 +249,7 @@ const Opportunities = () => {
       setOpportunities(enhancedData);
     } catch (error) {
       console.error('Error fetching opportunities:', error);
-      setError('Failed to fetch opportunities. Please try again.');
+      setError(`Failed to fetch opportunities. ${error.message}`);
       setOpportunities([]);
     } finally {
       setLoading(false);
