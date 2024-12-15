@@ -1,87 +1,112 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { FaHome, FaSearch, FaCalendar, FaUser, FaEnvelope } from 'react-icons/fa';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
-import Loading from './components/Loading';
 import Home from './pages/Home';
-import Calendar from './components/Calendar';
 import Opportunities from './pages/Opportunities';
-import Profile from './pages/Profile';
+import Calendar from './pages/Calendar';
 import EmailGenerator from './pages/EmailGenerator';
+import Profile from './pages/Profile';
+import { motion, AnimatePresence } from 'framer-motion';
 
-function App() {
-  const [loading, setLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    // Simulate initial loading
-    setTimeout(() => {
-      setLoading(false);
-    }, 1500);
-  }, []);
-
-  if (loading) {
-    return <Loading />;
+// Error Boundary Component
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
   }
 
-  return (
-    <Router>
-      <div className="min-h-screen bg-gray-50">
-        <nav className="bg-white shadow-lg">
-          <div className="max-w-7xl mx-auto px-4">
-            <div className="flex justify-between h-16">
-              <div className="flex items-center">
-                <Link to="/" className="flex items-center gap-2">
-                  <motion.img
-                    src="/avocado-logo.png"
-                    alt="Avocado Space"
-                    className="h-8 w-8"
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                  />
-                  <span className="text-xl font-bold text-indigo-600">Avocado Space</span>
-                </Link>
-              </div>
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
 
-              <div className="flex items-center space-x-4">
-                <NavLink to="/" icon={<FaHome />} text="Home" />
-                <NavLink to="/opportunities" icon={<FaSearch />} text="Opportunities" />
-                <NavLink to="/calendar" icon={<FaCalendar />} text="Calendar" />
-                <NavLink to="/email-generator" icon={<FaEnvelope />} text="Email Generator" />
-                <NavLink to="/profile" icon={<FaUser />} text="Profile" />
-              </div>
-            </div>
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="max-w-md w-full p-8 bg-white rounded-xl shadow-lg">
+            <h2 className="text-2xl font-bold text-red-600 mb-4">Something went wrong</h2>
+            <p className="text-gray-600 mb-4">{this.state.error?.message}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              Refresh Page
+            </button>
           </div>
-        </nav>
-
-        <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/opportunities" element={<Opportunities />} />
-            <Route path="/calendar" element={<Calendar />} />
-            <Route path="/email-generator" element={<EmailGenerator />} />
-            <Route path="/profile" element={<Profile />} />
-          </Routes>
-        </main>
-      </div>
-    </Router>
-  );
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
-const NavLink = ({ to, icon, text }) => (
-  <Link
-    to={to}
-    className="flex items-center px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 transition-colors duration-200"
+const PageTransition = ({ children }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -20 }}
+    transition={{ duration: 0.3 }}
   >
-    <motion.div
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.9 }}
-      className="flex items-center gap-2"
-    >
-      {icon}
-      {text}
-    </motion.div>
-  </Link>
+    {children}
+  </motion.div>
 );
+
+function App() {
+  return (
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <div className="min-h-screen bg-gray-50">
+        <ErrorBoundary>
+          <Navbar />
+          <main className="pt-16"> {/* Add padding-top to account for fixed navbar */}
+            <AnimatePresence mode="wait">
+              <Routes>
+                <Route 
+                  path="/" 
+                  element={
+                    <PageTransition>
+                      <Home />
+                    </PageTransition>
+                  } 
+                />
+                <Route 
+                  path="/opportunities" 
+                  element={
+                    <PageTransition>
+                      <Opportunities />
+                    </PageTransition>
+                  } 
+                />
+                <Route 
+                  path="/calendar" 
+                  element={
+                    <PageTransition>
+                      <Calendar />
+                    </PageTransition>
+                  } 
+                />
+                <Route 
+                  path="/email" 
+                  element={
+                    <PageTransition>
+                      <EmailGenerator />
+                    </PageTransition>
+                  } 
+                />
+                <Route 
+                  path="/profile" 
+                  element={
+                    <PageTransition>
+                      <Profile />
+                    </PageTransition>
+                  } 
+                />
+              </Routes>
+            </AnimatePresence>
+          </main>
+        </ErrorBoundary>
+      </div>
+    </BrowserRouter>
+  );
+}
 
 export default App;

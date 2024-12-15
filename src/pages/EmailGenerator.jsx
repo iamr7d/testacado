@@ -1,171 +1,205 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FaUser, FaEnvelope, FaLink, FaSpinner, FaMedal } from 'react-icons/fa';
-import axios from 'axios';
+import { HiMail, HiClipboardCopy, HiCheck } from 'react-icons/hi';
 
 const EmailGenerator = () => {
-  const [professorUrl, setProfessorUrl] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [professorProfile, setProfessorProfile] = useState(null);
-  const [compatibilityScore, setCompatibilityScore] = useState(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    university: '',
+    program: '',
+    professor: '',
+    research: '',
+    experience: ''
+  });
   const [generatedEmail, setGeneratedEmail] = useState('');
-  const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
 
-  const generateEmail = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      
-      // Call backend API to scrape professor data and generate email
-      const response = await axios.post('/api/generate-email', {
-        professorUrl,
-        userProfile: {
-          // Get this from user profile context/state
-          research_interests: ['AI', 'Machine Learning'],
-          education: 'Bachelor in Computer Science',
-          experience: '2 years research experience',
-          publications: ['Paper 1', 'Paper 2']
-        }
-      });
-
-      setProfessorProfile(response.data.professorProfile);
-      setCompatibilityScore(response.data.compatibilityScore);
-      setGeneratedEmail(response.data.generatedEmail);
-    } catch (err) {
-      setError('Failed to generate email. Please try again.');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    // Add your email generation logic here
+    const emailTemplate = `Dear Professor ${formData.professor},
+
+I hope this email finds you well. My name is ${formData.name}, and I am writing to express my interest in pursuing a PhD under your supervision at ${formData.university} in the ${formData.program} program.
+
+I am particularly interested in your research on ${formData.research}. My background includes ${formData.experience}, which I believe aligns well with your research interests.
+
+I would greatly appreciate the opportunity to discuss potential PhD opportunities in your research group.
+
+Thank you for your time and consideration.
+
+Best regards,
+${formData.name}`;
+
+    setGeneratedEmail(emailTemplate);
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(generatedEmail);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const inputClasses = "w-full px-4 py-3 rounded-xl bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#58CC02] text-gray-900";
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-6">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-4xl mx-auto"
-      >
-        <h1 className="text-3xl font-bold text-gray-800 mb-8">
-          Smart Email Generator
-        </h1>
-
-        {/* Input Section */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-          <div className="flex flex-col md:flex-row gap-4">
-            <input
-              type="text"
-              value={professorUrl}
-              onChange={(e) => setProfessorUrl(e.target.value)}
-              placeholder="Enter professor's webpage URL"
-              className="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            />
-            <button
-              onClick={generateEmail}
-              disabled={loading || !professorUrl}
-              className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <FaSpinner className="animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <FaEnvelope />
-                  Generate Email
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-
-        {error && (
-          <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-8">
-            {error}
-          </div>
-        )}
-
-        {/* Results Section */}
-        {professorProfile && (
+    <div className="min-h-screen bg-[#235390] py-12">
+      <div className="max-w-4xl mx-auto px-4">
+        {/* Header */}
+        <div className="text-center mb-12">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="grid md:grid-cols-2 gap-8"
+            className="inline-block bg-[#58CC02] p-3 rounded-2xl mb-4"
           >
-            {/* Professor Profile Card */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center">
-                  <FaUser className="text-2xl text-indigo-600" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-800">
-                    {professorProfile.name}
-                  </h2>
-                  <p className="text-gray-600">{professorProfile.department}</p>
-                </div>
-              </div>
+            <HiMail className="w-8 h-8 text-white" />
+          </motion.div>
+          <h1 className="text-3xl font-bold text-white mb-4">
+            Email Generator
+          </h1>
+          <p className="text-white/80">
+            Create professional emails to reach out to potential PhD supervisors
+          </p>
+        </div>
 
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <FaMedal className="text-indigo-600" />
-                  <span className="text-gray-700">Research Areas:</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {professorProfile.researchAreas.map((area, index) => (
-                    <span
-                      key={index}
-                      className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-sm"
-                    >
-                      {area}
-                    </span>
-                  ))}
-                </div>
-
-                {/* Compatibility Score */}
-                <div className="mt-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                    Compatibility Score
-                  </h3>
-                  <div className="relative h-4 bg-gray-200 rounded-full">
-                    <div
-                      className="absolute h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"
-                      style={{ width: `${compatibilityScore}%` }}
-                    />
-                  </div>
-                  <p className="text-center mt-2 text-gray-600">
-                    {compatibilityScore}% Match
-                  </p>
-                </div>
-              </div>
+        {/* Form */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-white rounded-3xl shadow-xl p-6 mb-8"
+        >
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-gray-700 font-bold mb-2">Your Name</label>
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                className={inputClasses}
+                placeholder="John Doe"
+                required
+              />
             </div>
 
-            {/* Generated Email Card */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-xl font-semibold text-gray-800 mb-4">
-                Generated Email
-              </h3>
-              <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                <pre className="whitespace-pre-wrap text-gray-700 font-mono text-sm">
-                  {generatedEmail}
-                </pre>
-              </div>
-              <div className="flex justify-end gap-4">
-                <button
-                  onClick={() => navigator.clipboard.writeText(generatedEmail)}
-                  className="px-4 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors duration-200"
-                >
-                  Copy to Clipboard
-                </button>
-                <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200">
-                  Open in Email Client
-                </button>
-              </div>
+            <div>
+              <label className="block text-gray-700 font-bold mb-2">University</label>
+              <input
+                type="text"
+                name="university"
+                value={formData.university}
+                onChange={handleInputChange}
+                className={inputClasses}
+                placeholder="University of Example"
+                required
+              />
             </div>
+
+            <div>
+              <label className="block text-gray-700 font-bold mb-2">Program</label>
+              <input
+                type="text"
+                name="program"
+                value={formData.program}
+                onChange={handleInputChange}
+                className={inputClasses}
+                placeholder="Computer Science"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-gray-700 font-bold mb-2">Professor's Name</label>
+              <input
+                type="text"
+                name="professor"
+                value={formData.professor}
+                onChange={handleInputChange}
+                className={inputClasses}
+                placeholder="Dr. Jane Smith"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-gray-700 font-bold mb-2">Research Interest</label>
+              <input
+                type="text"
+                name="research"
+                value={formData.research}
+                onChange={handleInputChange}
+                className={inputClasses}
+                placeholder="Artificial Intelligence and Machine Learning"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-gray-700 font-bold mb-2">Relevant Experience</label>
+              <textarea
+                name="experience"
+                value={formData.experience}
+                onChange={handleInputChange}
+                className={inputClasses}
+                rows="4"
+                placeholder="Briefly describe your relevant experience and achievements"
+                required
+              />
+            </div>
+
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              type="submit"
+              className="w-full py-4 bg-[#58CC02] text-white font-bold rounded-xl hover:bg-[#46a302] transition-colors duration-300 shadow-lg shadow-[#58CC02]/20"
+            >
+              Generate Email
+            </motion.button>
+          </form>
+        </motion.div>
+
+        {/* Generated Email */}
+        {generatedEmail && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-3xl shadow-xl p-6"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-900">Generated Email</h2>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={copyToClipboard}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+              >
+                {copied ? (
+                  <>
+                    <HiCheck className="w-5 h-5 text-[#58CC02]" />
+                    <span className="text-gray-700">Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <HiClipboardCopy className="w-5 h-5 text-gray-600" />
+                    <span className="text-gray-700">Copy</span>
+                  </>
+                )}
+              </motion.button>
+            </div>
+            <pre className="whitespace-pre-wrap font-sans text-gray-700 bg-gray-50 p-4 rounded-xl">
+              {generatedEmail}
+            </pre>
           </motion.div>
         )}
-      </motion.div>
+      </div>
     </div>
   );
 };

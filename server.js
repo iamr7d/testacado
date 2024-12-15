@@ -127,7 +127,7 @@ app.get('/api/scrape', async (req, res) => {
           deadline: String(deadline),
           description: String(description),
           fundingStatus: String(fundingStatus),
-          rating: 70
+          rating: null
         };
         
         opportunities.push(opportunity);
@@ -149,7 +149,11 @@ app.get('/api/scrape', async (req, res) => {
 
     async function rateOpportunity(opportunity) {
       try {
-        const prompt = `Rate this PhD opportunity on a scale of 0-100 based on its potential impact, research area, and overall attractiveness. Only return the numerical score, nothing else.
+        const prompt = `Analyze this PhD opportunity and provide a detailed research assessment. Return a JSON object with the following fields:
+        - researchScore (0-100): Rate the research potential and impact
+        - fieldImpact (string): Describe the field impact (e.g., "High impact in AI", "Emerging field in Quantum Computing")
+        - keywords (array): Extract 5-7 relevant research keywords
+        - analysis (string): Brief analysis of research significance
 
 Title: ${opportunity.title}
 University: ${opportunity.university}
@@ -161,14 +165,24 @@ Funding Status: ${opportunity.fundingStatus}`;
           messages: [{ role: 'user', content: prompt }],
           model: 'mixtral-8x7b-32768',
           temperature: 0.3,
-          max_tokens: 10,
+          max_tokens: 1000,
         });
 
-        const rating = parseInt(completion.choices[0]?.message?.content?.trim() || '70');
-        return Math.min(Math.max(rating, 0), 100);
+        const response = JSON.parse(completion.choices[0]?.message?.content || '{}');
+        return {
+          overall: Math.min(Math.max(response.researchScore || 70, 0), 100),
+          fieldImpact: response.fieldImpact || 'Field impact not analyzed',
+          keywords: response.keywords || [],
+          analysis: response.analysis || 'Analysis not available'
+        };
       } catch (error) {
         console.error('Error rating opportunity:', error);
-        return 70; // Default rating if rating fails
+        return {
+          overall: 70,
+          fieldImpact: 'Analysis failed',
+          keywords: [],
+          analysis: 'Analysis not available'
+        };
       }
     }
 
@@ -176,9 +190,10 @@ Funding Status: ${opportunity.fundingStatus}`;
 
     opportunities.forEach((opportunity, index) => {
       opportunity.rating = ratedOpportunities[index];
+      opportunity.keywords = opportunity.rating.keywords;
     });
 
-    opportunities.sort((a, b) => b.rating - a.rating);
+    opportunities.sort((a, b) => b.rating.overall - a.rating.overall);
 
     console.log(`Successfully extracted ${opportunities.length} opportunities`);
     res.json({
