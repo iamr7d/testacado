@@ -2,7 +2,7 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 
 // Initialize backend URL
-const BACKEND_URL = 'http://localhost:3002/api'; // Use full URL to backend API
+const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002'; // Use full URL to backend API
 
 // Create axios instance with default config
 const api = axios.create({
@@ -371,32 +371,19 @@ const generateHighlights = (opportunity) => {
   return shuffled.slice(0, count);
 };
 
-export const scrapePhdData = async (keyword = '') => {
-  console.log('Fetching opportunities...');
+export const scrapePhdData = async (keyword) => {
   try {
-    // Using the correct endpoint
-    const response = await axios.get(`http://localhost:3002/api/scrape`, {
-      params: { 
-        keyword: encodeURIComponent(keyword)
-      }
-    });
-    
-    if (response.data && response.data.opportunities) {
-      // Process each opportunity to ensure AI analysis
-      const processedOpportunities = response.data.opportunities.map(processOpportunity);
-      return processedOpportunities;
+    const response = await fetch(`${BACKEND_URL}/api/scrape?keyword=${encodeURIComponent(keyword)}`);
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
     }
-    
-    // Return empty array if no opportunities found
-    return [];
+    return await response.json();
   } catch (error) {
-    console.error('Error fetching opportunities:', error);
-    // Return mock data for development/testing
-    return getMockOpportunities();
+    console.error('Error fetching PhD data:', error);
+    throw error;
   }
 };
 
-// Mock data function for development/testing
 const getMockOpportunities = () => {
   return [
     {
