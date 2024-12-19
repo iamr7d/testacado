@@ -1,205 +1,68 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { HiMail, HiClipboardCopy, HiCheck } from 'react-icons/hi';
+import { HiMail } from 'react-icons/hi';
+import Header from '../components/Header';
 
 const EmailGenerator = () => {
-  const [formData, setFormData] = useState({
-    name: '',
-    university: '',
-    program: '',
-    professor: '',
-    research: '',
-    experience: ''
-  });
-  const [generatedEmail, setGeneratedEmail] = useState('');
-  const [copied, setCopied] = useState(false);
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    // Add your email generation logic here
-    const emailTemplate = `Dear Professor ${formData.professor},
-
-I hope this email finds you well. My name is ${formData.name}, and I am writing to express my interest in pursuing a PhD under your supervision at ${formData.university} in the ${formData.program} program.
-
-I am particularly interested in your research on ${formData.research}. My background includes ${formData.experience}, which I believe aligns well with your research interests.
-
-I would greatly appreciate the opportunity to discuss potential PhD opportunities in your research group.
-
-Thank you for your time and consideration.
-
-Best regards,
-${formData.name}`;
-
-    setGeneratedEmail(emailTemplate);
-  };
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(generatedEmail);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const inputClasses = "w-full px-4 py-3 rounded-xl bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#58CC02] text-gray-900";
-
   return (
-    <div className="min-h-screen bg-[#235390] py-12">
-      <div className="max-w-4xl mx-auto px-4">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="inline-block bg-[#58CC02] p-3 rounded-2xl mb-4"
-          >
-            <HiMail className="w-8 h-8 text-white" />
-          </motion.div>
-          <h1 className="text-3xl font-bold text-white mb-4">
-            Email Generator
-          </h1>
-          <p className="text-white/80">
-            Create professional emails to reach out to potential PhD supervisors
-          </p>
+    <div className="min-h-screen bg-[#1e1e2f]">
+      <Header />
+      
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex items-center space-x-4 mb-6">
+          <HiMail className="w-10 h-10 text-blue-400" />
+          <div>
+            <h1 className="text-4xl font-bold text-white">Email Generator</h1>
+            <p className="text-blue-300">AI-powered email generation for PhD applications</p>
+          </div>
         </div>
 
-        {/* Form */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white rounded-3xl shadow-xl p-6 mb-8"
-        >
-          <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Progress Steps */}
+        <div className="relative mb-12">
+          <div className="flex justify-between items-center">
+            <div className="flex flex-col items-center">
+              <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">1</div>
+              <span className="mt-2 text-blue-300">Analyze Profile</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="w-10 h-10 rounded-full bg-[#1e3a8a] flex items-center justify-center text-blue-300 font-bold">2</div>
+              <span className="mt-2 text-blue-300">Your Info</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="w-10 h-10 rounded-full bg-[#1e3a8a] flex items-center justify-center text-blue-300 font-bold">3</div>
+              <span className="mt-2 text-blue-300">Generate Email</span>
+            </div>
+          </div>
+          <div className="absolute top-5 left-0 right-0 h-0.5 bg-[#1e3a8a] -z-10"></div>
+        </div>
+
+        {/* Professor Profile Analysis Form */}
+        <div className="bg-[#1e3a8a]/20 rounded-2xl p-8 backdrop-blur-lg border border-blue-700/30">
+          <div className="flex items-center space-x-3 mb-6">
+            <HiMail className="w-6 h-6 text-blue-400" />
+            <h2 className="text-2xl font-bold text-white">Professor Profile Analysis</h2>
+          </div>
+          
+          <div className="space-y-6">
             <div>
-              <label className="block text-gray-700 font-bold mb-2">Your Name</label>
+              <label htmlFor="profileUrl" className="block text-sm font-medium text-blue-300 mb-2">
+                Professor's Profile URL
+              </label>
               <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                className={inputClasses}
-                placeholder="John Doe"
-                required
+                type="url"
+                id="profileUrl"
+                className="w-full bg-[#1e1e2f] border border-blue-700/30 rounded-xl px-4 py-3 text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="https://university.edu/professor"
               />
             </div>
-
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">University</label>
-              <input
-                type="text"
-                name="university"
-                value={formData.university}
-                onChange={handleInputChange}
-                className={inputClasses}
-                placeholder="University of Example"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">Program</label>
-              <input
-                type="text"
-                name="program"
-                value={formData.program}
-                onChange={handleInputChange}
-                className={inputClasses}
-                placeholder="Computer Science"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">Professor's Name</label>
-              <input
-                type="text"
-                name="professor"
-                value={formData.professor}
-                onChange={handleInputChange}
-                className={inputClasses}
-                placeholder="Dr. Jane Smith"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">Research Interest</label>
-              <input
-                type="text"
-                name="research"
-                value={formData.research}
-                onChange={handleInputChange}
-                className={inputClasses}
-                placeholder="Artificial Intelligence and Machine Learning"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">Relevant Experience</label>
-              <textarea
-                name="experience"
-                value={formData.experience}
-                onChange={handleInputChange}
-                className={inputClasses}
-                rows="4"
-                placeholder="Briefly describe your relevant experience and achievements"
-                required
-              />
-            </div>
-
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              type="submit"
-              className="w-full py-4 bg-[#58CC02] text-white font-bold rounded-xl hover:bg-[#46a302] transition-colors duration-300 shadow-lg shadow-[#58CC02]/20"
-            >
-              Generate Email
-            </motion.button>
-          </form>
-        </motion.div>
-
-        {/* Generated Email */}
-        {generatedEmail && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-3xl shadow-xl p-6"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900">Generated Email</h2>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={copyToClipboard}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
-              >
-                {copied ? (
-                  <>
-                    <HiCheck className="w-5 h-5 text-[#58CC02]" />
-                    <span className="text-gray-700">Copied!</span>
-                  </>
-                ) : (
-                  <>
-                    <HiClipboardCopy className="w-5 h-5 text-gray-600" />
-                    <span className="text-gray-700">Copy</span>
-                  </>
-                )}
-              </motion.button>
-            </div>
-            <pre className="whitespace-pre-wrap font-sans text-gray-700 bg-gray-50 p-4 rounded-xl">
-              {generatedEmail}
-            </pre>
-          </motion.div>
-        )}
-      </div>
+            
+            <button className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-xl transition-colors flex items-center justify-center space-x-2">
+              <span>Analyze Profile</span>
+              <HiMail className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      </main>
     </div>
   );
 };

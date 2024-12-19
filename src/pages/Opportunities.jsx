@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo, memo, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, memo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { NavLink } from 'react-router-dom';
 import {
   HiSearch,
   HiAcademicCap,
@@ -9,9 +10,31 @@ import {
   HiCurrencyDollar,
   HiLightningBolt,
   HiInformationCircle,
-  HiExternalLink
+  HiExternalLink,
+  HiMail,
+  HiChartBar,
+  HiGlobe,
+  HiExclamation,
+  HiX
 } from 'react-icons/hi';
 import Loading from '../components/Loading';
+import Header from '../components/Header';
+import { scrapePhdData } from '../services/phdService';
+import LoadingStates from '../components/LoadingStates';
+import OpportunityFilters from '../components/OpportunityFilters';
+import ScoreBar from '../components/ScoreBar';
+
+// Helper function to generate a unique ID
+const generateId = (opportunity) => {
+  const str = `${opportunity.title}-${opportunity.university}-${opportunity.link}`;
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return `opp_${Math.abs(hash)}`;
+};
 
 // Memoized Tooltip component
 const Tooltip = memo(({ children }) => (
@@ -25,444 +48,386 @@ const Tooltip = memo(({ children }) => (
 ));
 
 // Memoized OpportunityCard component
-const OpportunityCard = memo(({
-  id,
-  title,
-  university,
-  location,
-  description,
-  deadline,
-  stipend,
-  keywords,
-  rating,
-  url
-}) => {
-  const handleViewDetails = useCallback(() => {
-    if (url) {
-      window.open(url, '_blank', 'noopener,noreferrer');
-    }
-  }, [url]);
+const OpportunityCard = memo(({ opportunity }) => {
+  const {
+    title,
+    university,
+    department,
+    description,
+    location,
+    fundingStatus,
+    supervisor,
+    link,
+    dates,
+    scores
+  } = opportunity;
+
+  const handleAddToCalendar = () => {
+    const event = {
+      title: `Deadline: ${title}`,
+      description: `PhD Opportunity at ${university}\n${description}`,
+      location: location,
+      startTime: dates?.deadline,
+      endTime: dates?.deadline
+    };
+    
+    window.dispatchEvent(new CustomEvent('addToCalendar', { detail: event }));
+  };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      layout
-      className="bg-white/5 backdrop-blur-md rounded-3xl p-6 border border-white/10 hover:border-white/20 transition-all duration-300 group hover:transform hover:scale-[1.01]"
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 20 }}
+      whileHover={{ scale: 1.01, transition: { duration: 0.2 } }}
+      className="bg-[#1e1e3f]/50 backdrop-blur-sm p-4 rounded-2xl border border-blue-900/30 hover:border-blue-500/30 transition-all duration-300"
     >
       <div className="flex gap-6">
-        {/* Left Column - Main Info */}
-        <div className="flex-1">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h3 className="text-2xl font-bold text-white mb-2 line-clamp-2">{title}</h3>
-              <div className="flex items-center gap-4">
-                <p className="text-[#58CC02] font-semibold flex items-center gap-2">
-                  <HiAcademicCap className="w-5 h-5" />
-                  {university}
-                </p>
-                <div className="flex items-center text-white/60">
-                  <HiLocationMarker className="w-5 h-5 mr-2" />
-                  {location}
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center bg-[#58CC02]/20 px-4 py-2 rounded-xl backdrop-blur-md">
-              <HiStar className="w-6 h-6 text-[#58CC02] mr-2" />
-              <span className="text-[#58CC02] font-bold text-lg">{rating?.overall || 'N/A'}</span>
-            </div>
+        {/* Left Section: Title and University */}
+        <div className="w-1/4 min-w-[250px] border-r border-blue-900/30 pr-6">
+          <h3 className="text-xl font-semibold text-blue-100 mb-2 line-clamp-2">
+            {title}
+          </h3>
+          <div className="space-y-1">
+            <p className="text-blue-300">{university}</p>
+            {department && (
+              <p className="text-blue-400/70 text-sm">{department}</p>
+            )}
           </div>
-
-          <p className="text-white/70 mb-4 line-clamp-2">{description}</p>
-
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div className="flex items-center text-white/80 bg-white/5 rounded-xl p-3">
-              <HiCalendar className="w-5 h-5 mr-3 text-white/60" />
-              <span className="truncate">{deadline}</span>
-            </div>
-            <div className="flex items-center text-white/80 bg-white/5 rounded-xl p-3">
-              <HiCurrencyDollar className="w-5 h-5 mr-3 text-white/60" />
-              <span className="truncate">{stipend}</span>
-            </div>
-          </div>
-
-          {keywords?.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {keywords.slice(0, 4).map((keyword, index) => (
-                <span 
-                  key={index}
-                  className="px-4 py-2 bg-white/5 text-white/80 rounded-xl text-sm cursor-pointer hover:bg-white/10 transition-all duration-200 backdrop-blur-md border border-white/10"
-                  onClick={() => setSearchQuery(keyword)}
-                >
-                  {keyword}
-                </span>
-              ))}
-              {keywords.length > 4 && (
-                <span className="px-4 py-2 bg-white/5 text-white/80 rounded-xl text-sm">
-                  +{keywords.length - 4} more
-                </span>
-              )}
-            </div>
-          )}
         </div>
 
-        {/* Right Column - AI Analysis */}
-        <div className="w-1/3 border-l border-white/10 pl-6">
-          <div className="mb-4">
-            <div className="flex items-center text-white mb-3">
-              <HiLightningBolt className="w-5 h-5 mr-2 text-[#58CC02]" />
-              <h4 className="font-semibold">AI Research Analysis</h4>
-            </div>
-            <div className="space-y-3">
-              <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 backdrop-blur-md rounded-xl p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-blue-100 font-medium text-lg">Research Impact</span>
-                  <div className="flex items-center gap-1">
-                    {rating?.researchScore >= 85 ? (
-                      <div className="flex items-center">
-                        {[...Array(5)].map((_, index) => (
-                          <HiStar key={index} className="w-5 h-5 text-[#58CC02]" />
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-                <div className="text-center mb-4">
-                  <span className="text-[#58CC02] text-5xl font-bold">
-                    {rating?.researchScore || '85'}
-                  </span>
-                  <span className="text-white/60 text-xl ml-1">/100</span>
-                </div>
-                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
-                    style={{ width: `${rating?.researchScore || 85}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className="bg-white/5 backdrop-blur-md rounded-xl p-4">
-                <h5 className="text-white/90 font-medium mb-2">Field Impact</h5>
-                <p className="text-blue-100 text-sm leading-relaxed">
-                  {rating?.fieldImpact || 'This research contributes significantly to advancing knowledge in the field, with potential applications in both theoretical and practical domains.'}
-                </p>
-              </div>
-
-              <div className="bg-white/5 backdrop-blur-md rounded-xl p-4">
-                <h5 className="text-white/90 font-medium mb-2">Research Highlights</h5>
-                <div className="space-y-2">
-                  {(rating?.highlights || [
-                    'Novel research methodology',
-                    'Strong potential for innovation',
-                    'High academic impact factor'
-                  ]).map((highlight, index) => (
-                    <div key={index} className="flex items-center gap-2 text-white/80">
-                      <div className="w-1.5 h-1.5 rounded-full bg-[#58CC02]" />
-                      <span className="text-sm">{highlight}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+        {/* Middle Section: Description and Tags */}
+        <div className="flex-1">
+          <p className="text-blue-200/80 text-sm mb-4 line-clamp-2">
+            {description}
+          </p>
+          
+          <div className="flex flex-wrap gap-2">
+            {location && (
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-900/30 text-blue-200">
+                <i className="fas fa-map-marker-alt mr-1"></i>
+                {location}
+              </span>
+            )}
+            {fundingStatus && (
+              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                fundingStatus.toLowerCase().includes('fully') 
+                  ? 'bg-green-900/30 text-green-200'
+                  : fundingStatus.toLowerCase().includes('partial')
+                  ? 'bg-yellow-900/30 text-yellow-200'
+                  : 'bg-red-900/30 text-red-200'
+              }`}>
+                <i className="fas fa-coins mr-1"></i>
+                {fundingStatus}
+              </span>
+            )}
+            {dates?.deadline && (
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-900/30 text-purple-200">
+                <i className="fas fa-clock mr-1"></i>
+                {new Date(dates.deadline).toLocaleDateString()}
+              </span>
+            )}
+            {supervisor && (
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-900/30 text-indigo-200">
+                <i className="fas fa-user-tie mr-1"></i>
+                {supervisor}
+              </span>
+            )}
           </div>
+        </div>
 
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleViewDetails}
-            className="w-full bg-gradient-to-r from-[#58CC02] to-[#46a302] text-white font-bold py-3 px-6 rounded-xl hover:from-[#46a302] hover:to-[#389102] transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-[#58CC02]/20"
-          >
-            <span>View Details</span>
-            <HiExternalLink className="w-5 h-5" />
-          </motion.button>
+        {/* Right Section: Scores and Actions */}
+        <div className="w-1/4 min-w-[200px] border-l border-blue-900/30 pl-6">
+          {scores && (
+            <div className="space-y-2">
+              {Object.entries(scores).map(([key, value]) => (
+                key !== 'overall' && (
+                  <div key={key}>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-blue-300">
+                        {key.charAt(0).toUpperCase() + key.slice(1)}
+                      </span>
+                      <span className="text-blue-200">{value}%</span>
+                    </div>
+                    <div className="h-1.5 bg-blue-900/30 rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${value}%` }}
+                        transition={{ duration: 0.5, ease: "easeOut" }}
+                        className={`h-full rounded-full ${
+                          value >= 80 ? 'bg-green-500' :
+                          value >= 60 ? 'bg-yellow-500' :
+                          'bg-red-500'
+                        }`}
+                      />
+                    </div>
+                  </div>
+                )
+              ))}
+            </div>
+          )}
+
+          <div className="flex gap-2 mt-4 justify-end">
+            {dates?.deadline && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleAddToCalendar}
+                className="p-2 rounded-xl bg-purple-900/30 text-purple-200 hover:bg-purple-800/40 transition-colors"
+                title="Add to Calendar"
+              >
+                <i className="fas fa-calendar-plus"></i>
+              </motion.button>
+            )}
+            {link && (
+              <motion.a
+                href={link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-xl bg-blue-900/30 text-blue-200 hover:bg-blue-800/40 transition-colors"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                title="View Details"
+              >
+                <i className="fas fa-external-link-alt"></i>
+              </motion.a>
+            )}
+          </div>
         </div>
       </div>
     </motion.div>
   );
 });
 
-// Error Boundary Component
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error, errorInfo) {
-    console.error('Error in opportunities:', error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="text-center p-8">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Something went wrong</h2>
-          <button
-            onClick={() => window.location.reload()}
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-          >
-            Reload Page
-          </button>
+const LoadingSkeleton = () => (
+  <motion.div
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+    transition={{ duration: 0.3 }}
+    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4"
+  >
+    {[...Array(6)].map((_, index) => (
+      <motion.div
+        key={`skeleton_${index}`}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ 
+          opacity: [0.4, 0.7, 0.4],
+          y: 0 
+        }}
+        transition={{
+          opacity: {
+            repeat: Infinity,
+            duration: 1.5,
+            ease: "easeInOut"
+          },
+          y: {
+            duration: 0.3,
+            delay: index * 0.1
+          }
+        }}
+        className="bg-[#1e1e3f]/50 backdrop-blur-sm p-6 rounded-2xl border border-blue-900/30"
+      >
+        {/* Title Skeleton */}
+        <div className="h-6 bg-blue-700/20 rounded-lg mb-4 w-3/4"></div>
+        
+        {/* University Skeleton */}
+        <div className="h-4 bg-blue-700/20 rounded-lg mb-3 w-1/2"></div>
+        
+        {/* Description Skeleton */}
+        <div className="space-y-2">
+          <div className="h-3 bg-blue-700/20 rounded-lg w-full"></div>
+          <div className="h-3 bg-blue-700/20 rounded-lg w-5/6"></div>
+          <div className="h-3 bg-blue-700/20 rounded-lg w-4/6"></div>
         </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
+        
+        {/* Tags Skeleton */}
+        <div className="flex gap-2 mt-4">
+          <div className="h-6 bg-blue-700/20 rounded-full w-20"></div>
+          <div className="h-6 bg-blue-700/20 rounded-full w-24"></div>
+        </div>
+      </motion.div>
+    ))}
+  </motion.div>
+);
 
 // Main Opportunities Component
 const Opportunities = () => {
   const [opportunities, setOpportunities] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searching, setSearching] = useState(false);
   const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState('all');
+  const searchTimeoutRef = useRef(null);
 
-  // Memoized fetch function
-  const fetchOpportunities = useCallback(async (keyword = '') => {
+  // Fetch opportunities with search
+  const fetchOpportunities = useCallback(async (searchTerm = '') => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/scrape?keyword=${encodeURIComponent(keyword)}`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      
+      const response = await scrapePhdData(searchTerm);
+      if (!response || !response.data) {
+        throw new Error('Invalid response from server');
       }
-      const data = await response.json();
-      const enhancedData = data.map(opp => ({
-        id: opp.id,
-        title: opp.title || 'Untitled Position',
-        university: opp.university || 'University Not Specified',
-        deadline: opp.deadline || 'Deadline Not Specified',
-        location: opp.location || 'Location Not Specified',
-        description: opp.description || 'No description available',
-        stipend: opp.funding || 'Funding details not available',
-        rating: opp.rating || {},
-        keywords: opp.keywords || [],
-        url: opp.link || ''
-      }));
-      setOpportunities(enhancedData);
+
+      setOpportunities(response.data);
     } catch (error) {
       console.error('Error fetching opportunities:', error);
-      setError(`Failed to fetch opportunities. ${error.message}`);
+      setError(error.message || 'Failed to fetch opportunities');
       setOpportunities([]);
     } finally {
       setLoading(false);
-      setSearching(false);
     }
   }, []);
 
-  // Initial load
+  // Initial fetch
   useEffect(() => {
     fetchOpportunities();
   }, [fetchOpportunities]);
 
-  // Debounced search with cleanup
-  useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      if (searchQuery) {
-        setSearching(true);
-        fetchOpportunities(searchQuery);
-      }
-    }, 500); // Reduced from 1000ms to 500ms for better responsiveness
+  // Handle search input
+  const handleSearchChange = useCallback((e) => {
+    const value = e.target.value;
+    setSearchQuery(value);
 
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery, fetchOpportunities]);
+    // Clear existing timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
 
-  // Sort opportunities by rating
-  const sortedOpportunities = useMemo(() => {
-    return [...opportunities].sort((a, b) => {
-      const ratingA = a.rating?.researchScore || 0;
-      const ratingB = b.rating?.researchScore || 0;
-      return ratingB - ratingA; // Sort in descending order
-    });
-  }, [opportunities]);
+    // Set new timeout for search
+    searchTimeoutRef.current = setTimeout(() => {
+      fetchOpportunities(value);
+    }, 500);
+  }, [fetchOpportunities]);
 
-  // Create opportunity cards with sorted data
-  const opportunityCards = useMemo(() => {
-    return sortedOpportunities.map((opportunity) => (
-      <OpportunityCard
-        key={opportunity.id}
-        id={opportunity.id}
-        title={opportunity.title}
-        university={opportunity.university}
-        location={opportunity.location}
-        description={opportunity.description}
-        deadline={opportunity.deadline}
-        stipend={opportunity.stipend}
-        keywords={opportunity.keywords}
-        rating={opportunity.rating}
-        url={opportunity.url}
-      />
-    ));
-  }, [sortedOpportunities]);
+  // Clear search
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery('');
+    fetchOpportunities('');
+  }, [fetchOpportunities]);
 
-  // Add a sort indicator in the UI
-  const totalHighRated = useMemo(() => {
-    return opportunities.filter(opp => (opp.rating?.researchScore || 0) >= 85).length;
-  }, [opportunities]);
+  // Filter opportunities
+  const filteredOpportunities = useMemo(() => {
+    let filtered = [...opportunities];
 
-  if (loading && !searching) {
-    return <Loading />;
-  }
+    // Apply filters
+    switch (activeFilter) {
+      case 'funded':
+        filtered = filtered.filter(opp => 
+          opp.fundingStatus?.toLowerCase().includes('fully funded'));
+        break;
+      case 'international':
+        filtered = filtered.filter(opp => 
+          opp.description?.toLowerCase().includes('international') ||
+          opp.location?.toLowerCase().includes('international'));
+        break;
+      case 'upcoming':
+        filtered = filtered.filter(opp => {
+          if (!opp.dates?.deadline) return false;
+          const deadline = new Date(opp.dates.deadline);
+          const now = new Date();
+          const thirtyDaysFromNow = new Date();
+          thirtyDaysFromNow.setDate(now.getDate() + 30);
+          return deadline > now && deadline <= thirtyDaysFromNow;
+        });
+        break;
+      default:
+        break;
+    }
+
+    return filtered;
+  }, [opportunities, activeFilter]);
 
   return (
-    <ErrorBoundary>
-      <div className="min-h-screen bg-gradient-to-br from-[#1a365d] via-[#235390] to-[#2c4a7c] p-8">
-        {/* Header Section */}
-        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center mb-16">
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6">
-            Find Your Perfect PhD Opportunity
-          </h1>
-          <p className="text-xl text-white/80 max-w-3xl mx-auto">
-            Discover research opportunities from top universities worldwide
-          </p>
-        </div>
-
-        {/* Search Section */}
-        <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 mb-16">
-          <div className="relative">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1 relative">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                  <HiSearch className="w-6 h-6" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Search by title, university, location, or research area..."
-                  className="w-full pl-14 pr-4 py-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder:text-white/60 shadow-lg focus:outline-none focus:ring-2 focus:ring-[#58CC02] focus:bg-white/20 transition-all duration-300"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && fetchOpportunities(searchQuery)}
-                />
-              </div>
-              <button
-                onClick={() => fetchOpportunities(searchQuery)}
-                className="w-full sm:w-auto px-8 py-4 bg-[#58CC02] hover:bg-[#46a302] text-white font-bold rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
-              >
-                <HiSearch className="w-5 h-5" />
-                <span>Search</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Loading State */}
-          {searching && (
-            <div className="flex justify-center items-center text-white/80 mt-6">
-              <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3"></div>
-              <span>Searching opportunities...</span>
-            </div>
-          )}
-
-          {/* Quick Filters */}
-          <div className="flex flex-wrap justify-center gap-3 mt-8">
-            {['Computer Science', 'Biology', 'Engineering', 'Medicine', 'Physics'].map((filter) => (
-              <button
-                key={filter}
-                onClick={() => {
-                  setSearchQuery(filter);
-                  fetchOpportunities(filter);
-                }}
-                className="px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white/90 backdrop-blur-md border border-white/20 transition-all duration-300 hover:scale-105"
-              >
-                {filter}
-              </button>
-            ))}
+    <div className="min-h-screen bg-[#1e1e3f]">
+      <Header />
+      
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center space-x-4">
+            <h1 className="text-4xl font-bold text-white">PhD Opportunities</h1>
+            <span className="text-blue-300">
+              {filteredOpportunities.length} opportunities found
+            </span>
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {error && (
-            <div className="max-w-3xl mx-auto mb-8">
-              <div className="bg-red-500/10 backdrop-blur-md border border-red-500/20 text-red-100 px-6 py-4 rounded-xl flex items-center gap-3">
-                <HiInformationCircle className="w-6 h-6 flex-shrink-0" />
-                <p>{error}</p>
-              </div>
-            </div>
-          )}
+        {/* Filters */}
+        <OpportunityFilters 
+          activeFilter={activeFilter} 
+          onFilterChange={setActiveFilter}
+          totalCount={filteredOpportunities.length}
+        />
 
-          {/* Sort Information */}
-          {opportunities.length > 0 && (
-            <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 mb-8">
-              <div className="flex items-center justify-between bg-white/5 backdrop-blur-md rounded-xl p-4 border border-white/10">
-                <div className="flex items-center gap-2">
-                  <HiStar className="w-5 h-5 text-[#58CC02]" />
-                  <span className="text-white/90">
-                    Showing {opportunities.length} opportunities
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-white/60">
-                    {totalHighRated} highly rated
-                  </span>
-                  <div className="flex items-center">
-                    {[...Array(5)].map((_, index) => (
-                      <HiStar key={index} className="w-4 h-4 text-[#58CC02]" />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <AnimatePresence mode="popLayout">
-            <div className="grid grid-cols-1 gap-6">
-              {opportunityCards}
-            </div>
-          </AnimatePresence>
-
-          {opportunities.length === 0 && !loading && !error && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center bg-white/5 backdrop-blur-xl rounded-3xl p-12 mt-8 border border-white/10"
+        {/* Search Bar */}
+        <div className="relative mb-8">
+          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+            <HiSearch className="h-5 w-5 text-blue-300/50" />
+          </div>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={handleSearchChange}
+            placeholder="Search for opportunities..."
+            className="w-full bg-[#1e3a8a]/10 backdrop-blur-sm border border-blue-700/20 rounded-xl pl-12 pr-24 py-3 text-lg text-white placeholder-blue-300/50 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
+            disabled={loading}
+          />
+          {searchQuery && (
+            <button
+              onClick={handleClearSearch}
+              className="absolute inset-y-0 right-4 flex items-center text-blue-300/50 hover:text-blue-300 transition-colors"
             >
-              <div className="bg-white/10 rounded-full p-4 w-20 h-20 mx-auto mb-6 flex items-center justify-center">
-                <HiSearch className="w-10 h-10 text-white/70" />
+              <HiX className="h-5 w-5" />
+            </button>
+          )}
+        </div>
+
+        {/* Results */}
+        <div className="space-y-4">
+          {loading ? (
+            <LoadingSkeleton />
+          ) : error ? (
+            <div className="text-center py-12">
+              <div className="text-red-400 mb-4">
+                <HiExclamation className="h-12 w-12 mx-auto" />
               </div>
-              <h3 className="text-2xl font-bold text-white mb-3">No matches found</h3>
-              <p className="text-white/70 text-lg">Try adjusting your search terms or explore our quick filters above</p>
+              <h3 className="text-xl font-semibold text-red-300 mb-2">
+                Error Loading Opportunities
+              </h3>
+              <p className="text-blue-300">{error}</p>
+            </div>
+          ) : filteredOpportunities.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-blue-400 mb-4">
+                <HiSearch className="h-12 w-12 mx-auto" />
+              </div>
+              <h3 className="text-xl font-semibold text-blue-300 mb-2">
+                No Opportunities Found
+              </h3>
+              <p className="text-blue-300">
+                Try adjusting your search criteria
+              </p>
+            </div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-4"
+            >
+              {filteredOpportunities.map((opportunity, index) => (
+                <OpportunityCard 
+                  key={opportunity.id || index} 
+                  opportunity={opportunity} 
+                />
+              ))}
             </motion.div>
           )}
-
-          {/* Stats Section */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-16">
-            {[
-              { label: 'Universities', value: '500+' },
-              { label: 'Countries', value: '50+' },
-              { label: 'Opportunities', value: '1000+' },
-              { label: 'Research Fields', value: '100+' }
-            ].map((stat, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="bg-white/5 backdrop-blur-md rounded-2xl p-6 text-center border border-white/10"
-              >
-                <h4 className="text-3xl font-bold text-white mb-2">{stat.value}</h4>
-                <p className="text-white/70">{stat.label}</p>
-              </motion.div>
-            ))}
-          </div>
         </div>
-      </div>
-
-      {/* Footer */}
-      <footer className="w-full bg-[#1a365d]/50 backdrop-blur-md py-8 border-t border-white/10">
-        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p className="text-white/60">
-            Powered by AI • Updated daily • {new Date().getFullYear()}
-          </p>
-        </div>
-      </footer>
-    </ErrorBoundary>
+      </main>
+    </div>
   );
 };
 

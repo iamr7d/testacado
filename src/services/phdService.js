@@ -1,434 +1,193 @@
 import axios from 'axios';
-import * as cheerio from 'cheerio';
 
-// Initialize backend URL
-const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002'; // Use full URL to backend API
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
 
-// Create axios instance with default config
-const api = axios.create({
-  baseURL: BACKEND_URL,
-  timeout: 15000,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-});
+// Constants
+const MAX_RETRIES = 3;
+const BASE_DELAY = 2000;
+const MAX_DELAY = 30000;
 
-// Add response interceptor for error handling
-api.interceptors.response.use(
-  response => response,
-  error => {
-    console.error('API Error:', error);
-    if (error.code === 'ERR_NETWORK') {
-      throw new Error('Unable to connect to the server. Please check if the server is running.');
-    }
-    throw error;
-  }
-);
-
-const extractOpportunityDetails = async (html) => {
-  const $ = cheerio.load(html);
-  const opportunities = [];
-
-  // Try multiple selectors for opportunities
-  const selectors = [
-    '.phd-search-result',
-    '.search-result',
-    '.opportunity',
-    'article',
-    '.listing',
-    '.phd-result',
-    '.result-item',
-    '.phd-opportunity'
-  ];
-
-  let elements = [];
-  for (const selector of selectors) {
-    elements = $(selector);
-    if (elements.length > 0) {
-      console.log(`Found ${elements.length} opportunities using selector: ${selector}`);
-      break;
-    }
-  }
-
-  if (elements.length === 0) {
-    console.log('No opportunities found with standard selectors. Trying fallback extraction...');
-    elements = $('div[class*="phd"], div[class*="search"], div[class*="result"]');
-    
-    if (elements.length === 0) {
-      elements = $('div').filter((i, el) => {
-        const text = $(el).text().toLowerCase();
-        return text.includes('phd') || 
-               text.includes('research') ||
-               text.includes('opportunity') ||
-               text.includes('university');
-      });
-    }
-  }
-
-  elements.each((i, element) => {
-    try {
-      const $element = $(element);
-      
-      // Title extraction
-      let title = '';
-      const titleSelectors = [
-        'h1', 'h2', 'h3', 'h4',
-        '.title', '.heading',
-        'a[class*="title"]',
-        'div[class*="title"]'
-      ];
-      
-      for (const selector of titleSelectors) {
-        title = $element.find(selector).first().text().trim();
-        if (title) break;
-      }
-
-      // University/Institution extraction
-      let university = '';
-      const universitySelectors = [
-        '.university', 
-        '.institution',
-        'div[class*="university"]',
-        'span[class*="university"]'
-      ];
-      
-      for (const selector of universitySelectors) {
-        university = $element.find(selector).first().text().trim();
-        if (university) break;
-      }
-
-      // Department/School extraction
-      let department = '';
-      const departmentSelectors = [
-        '.department',
-        '.school',
-        'div[class*="department"]',
-        'div[class*="school"]'
-      ];
-      
-      for (const selector of departmentSelectors) {
-        department = $element.find(selector).first().text().trim();
-        if (department) break;
-      }
-
-      // Supervisor extraction
-      let supervisor = '';
-      const supervisorSelectors = [
-        '.supervisor',
-        'div[class*="supervisor"]',
-        'span[class*="supervisor"]'
-      ];
-      
-      for (const selector of supervisorSelectors) {
-        supervisor = $element.find(selector).first().text().trim();
-        if (supervisor) break;
-      }
-
-      // Deadline extraction
-      let deadline = '';
-      const deadlineSelectors = [
-        '.deadline',
-        '.due-date',
-        'div[class*="deadline"]',
-        'span[class*="deadline"]',
-        'time'
-      ];
-      
-      for (const selector of deadlineSelectors) {
-        deadline = $element.find(selector).first().text().trim();
-        if (deadline) break;
-      }
-
-      // Funding details extraction
-      let funding = '';
-      const fundingSelectors = [
-        '.funding',
-        '.scholarship',
-        'div[class*="funding"]',
-        'span[class*="funding"]',
-        'div[class*="scholarship"]'
-      ];
-      
-      for (const selector of fundingSelectors) {
-        funding = $element.find(selector).first().text().trim();
-        if (funding) break;
-      }
-
-      // Program type/duration extraction
-      let programType = '';
-      const programSelectors = [
-        '.program-type',
-        '.duration',
-        'div[class*="program"]',
-        'span[class*="duration"]'
-      ];
-      
-      for (const selector of programSelectors) {
-        programType = $element.find(selector).first().text().trim();
-        if (programType) break;
-      }
-
-      // Description extraction
-      let description = '';
-      const descriptionSelectors = [
-        'p',
-        '.description',
-        'div[class*="description"]',
-        'div[class*="content"]'
-      ];
-      
-      for (const selector of descriptionSelectors) {
-        const text = $element.find(selector).text().trim();
-        if (text && text.length > description.length) {
-          description = text;
-        }
-      }
-
-      // Link extraction
-      let link = '';
-      const linkElement = $element.find('a[href*="phd"], a[href*="opportunity"], a[href*="position"]').first();
-      if (linkElement.length) {
-        link = linkElement.attr('href');
-        if (!link.startsWith('http')) {
-          link = new URL(link, BACKEND_URL).toString();
-        }
-      }
-
-      if (title && (description || university)) {
-        opportunities.push({
-          title,
-          university,
-          department,
-          supervisor: supervisor || 'Supervisor Not Specified',
-          deadline,
-          funding: funding || 'Contact university for funding details',
-          programType: programType || '4 Year PhD Programme',
-          description,
-          link,
-          datePosted: new Date().toISOString(),
-          status: 'active'
-        });
-      }
-    } catch (error) {
-      console.error('Error extracting opportunity details:', error);
-    }
-  });
-
-  return opportunities;
-};
-
-const cleanAndValidateJSON = (content) => {
-  try {
-    // Remove any non-JSON text that might be present
-    const jsonStart = content.indexOf('[');
-    const jsonEnd = content.lastIndexOf(']') + 1;
-    
-    if (jsonStart === -1 || jsonEnd === 0) {
-      throw new Error('No JSON array found in response');
-    }
-    
-    let jsonContent = content.slice(jsonStart, jsonEnd);
-    
-    // Clean up common JSON issues
-    jsonContent = jsonContent
-      // Fix trailing commas
-      .replace(/,(\s*[}\]])/g, '$1')
-      // Fix missing commas
-      .replace(/}(\s*){/g, '},{')
-      // Fix unescaped quotes in strings
-      .replace(/"([^"]*?)"/g, (match, p1) => `"${p1.replace(/"/g, '\\"')}"`)
-      // Remove any control characters
-      .replace(/[\x00-\x1F\x7F-\x9F]/g, '');
-    
-    // Validate the JSON structure
-    const parsed = JSON.parse(jsonContent);
-    
-    if (!Array.isArray(parsed)) {
-      throw new Error('Response is not a JSON array');
-    }
-    
-    // Validate each opportunity object
-    return parsed.map(opp => ({
-      title: String(opp.title || ''),
-      description: String(opp.description || ''),
-      researchAreas: Array.isArray(opp.researchAreas) ? opp.researchAreas.map(String) : [],
-      requirements: String(opp.requirements || 'Not specified'),
-      university: String(opp.university || 'Not specified'),
-      department: String(opp.department || 'Not specified'),
-      supervisor: String(opp.supervisor || 'Not specified'),
-      deadline: String(opp.deadline || 'Not specified'),
-      link: String(opp.link || '')
-    }));
-    
-  } catch (error) {
-    throw new Error(`JSON validation failed: ${error.message}`);
-  }
-};
-
+// Helper function for delay
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-const structureDataWithAI = async (opportunities) => {
-  if (!opportunities || opportunities.length === 0) {
-    return [];
-  }
+// Helper function for exponential backoff
+const getBackoffDelay = (retryCount) => Math.min(BASE_DELAY * Math.pow(2, retryCount), MAX_DELAY);
 
-  const structureWithBackend = async (opportunity) => {
-    try {
-      const response = await api.post('/api/structure', opportunity);
-      return response.data;
-    } catch (error) {
-      throw new Error(`Failed to structure data: ${error.message}`);
-    }
-  };
-
-  // Process opportunities in parallel
-  const structuredOpportunities = await Promise.all(
-    opportunities.map(async (opportunity) => {
-      try {
-        return await structureWithBackend(opportunity);
-      } catch (error) {
-        console.error('Error structuring opportunity:', error);
-        return {
-          title: String(opportunity.title || '').trim(),
-          description: String(opportunity.description || '').trim(),
-          researchAreas: [],
-          requirements: 'Not specified',
-          university: String(opportunity.university || 'Not specified').trim(),
-          department: String(opportunity.department || 'Not specified').trim(),
-          supervisor: String(opportunity.supervisor || 'Not specified').trim(),
-          deadline: String(opportunity.deadline || 'Not specified').trim(),
-          link: String(opportunity.link || '').trim()
-        };
-      }
-    })
-  );
-
-  return structuredOpportunities;
+// Helper function to clean text
+const cleanText = (text) => {
+  if (!text) return '';
+  return text
+    .replace(/[\n\r\t]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 };
 
-async function rateOpportunity(opportunity) {
-  try {
-    const response = await api.post('/api/rate', opportunity);
-    return response.data.rating;
-  } catch (error) {
-    console.error('Error rating opportunity:', error);
-    return 0;
-  }
-}
-
-const processOpportunity = (opportunity) => {
-  // Ensure we always have a rating object with meaningful defaults
-  const rating = {
-    researchScore: Math.floor(70 + Math.random() * 30), // Generate a score between 70-100
-    fieldImpact: opportunity.rating?.fieldImpact || generateFieldImpact(opportunity),
-    analysis: opportunity.rating?.analysis || generateAnalysis(opportunity),
-    highlights: opportunity.rating?.highlights || generateHighlights(opportunity),
+// Helper function to extract dates
+const extractDates = (text) => {
+  if (!text) return { deadline: null, startDate: null };
+  
+  const datePatterns = {
+    deadline: /deadline:?\s*(\d{1,2}(?:st|nd|rd|th)?\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{4})/i,
+    start: /start(?:ing|s)?(?:\s+date)?:?\s*(\d{1,2}(?:st|nd|rd|th)?\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{4})/i
   };
+
+  const deadlineMatch = text.match(datePatterns.deadline);
+  const startMatch = text.match(datePatterns.start);
 
   return {
-    ...opportunity,
-    rating,
+    deadline: deadlineMatch ? deadlineMatch[1] : null,
+    startDate: startMatch ? startMatch[1] : null
   };
 };
 
-const generateFieldImpact = (opportunity) => {
-  const impacts = [
-    'This research has significant potential to advance the field with innovative methodologies and approaches.',
-    'The project addresses critical gaps in current knowledge, promising substantial contributions to the domain.',
-    'This opportunity combines cutting-edge research with practical applications, offering excellent impact potential.',
-    'The research aligns with emerging trends in the field, positioning it for significant academic impact.',
-  ];
-  return impacts[Math.floor(Math.random() * impacts.length)];
+// Helper function to remove duplicate opportunities
+const removeDuplicates = (opportunities) => {
+  const seen = new Set();
+  return opportunities.filter(opp => {
+    const key = `${opp.title}-${opp.university}`.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 };
 
-const generateAnalysis = (opportunity) => {
-  const analyses = [
-    'This opportunity offers a unique combination of expert supervision, state-of-the-art facilities, and innovative research direction.',
-    'The project provides excellent potential for publication and academic growth, with strong industry connections.',
-    'With its interdisciplinary approach and strong research team, this position offers exceptional development opportunities.',
-    'The research environment and resources available make this an outstanding opportunity for ambitious PhD candidates.',
-  ];
-  return analyses[Math.floor(Math.random() * analyses.length)];
+// Helper function to calculate basic scores
+const calculateBasicScores = (opportunity) => {
+  const scores = {
+    relevance: 0,
+    funding: 0,
+    university: 0,
+    location: 0
+  };
+
+  // Calculate relevance score
+  if (opportunity.title) {
+    const relevantTerms = ['phd', 'doctoral', 'research', 'scholarship', 'fellowship'];
+    const titleLower = opportunity.title.toLowerCase();
+    scores.relevance = relevantTerms.reduce((score, term) => 
+      titleLower.includes(term) ? score + 20 : score, 0);
+  }
+
+  // Calculate funding score
+  if (opportunity.fundingStatus) {
+    const fundingLower = opportunity.fundingStatus.toLowerCase();
+    if (fundingLower.includes('fully funded')) scores.funding = 100;
+    else if (fundingLower.includes('partial')) scores.funding = 60;
+    else if (fundingLower.includes('unfunded')) scores.funding = 20;
+    else scores.funding = 40;
+  }
+
+  // Calculate university score
+  if (opportunity.university) {
+    const topUniversities = ['oxford', 'cambridge', 'harvard', 'mit', 'stanford'];
+    const uniLower = opportunity.university.toLowerCase();
+    scores.university = topUniversities.some(uni => uniLower.includes(uni)) ? 100 : 70;
+  }
+
+  // Calculate location score
+  if (opportunity.location) {
+    const preferredLocations = ['london', 'new york', 'california', 'tokyo', 'singapore'];
+    const locationLower = opportunity.location.toLowerCase();
+    scores.location = preferredLocations.some(loc => locationLower.includes(loc)) ? 100 : 70;
+  }
+
+  return scores;
 };
 
-const generateHighlights = (opportunity) => {
-  const allHighlights = [
-    'Novel research methodology',
-    'Strong potential for innovation',
-    'High academic impact factor',
-    'Expert supervision team',
-    'State-of-the-art facilities',
-    'Industry collaboration opportunities',
-    'International research network',
-    'Publication opportunities',
-    'Interdisciplinary approach',
-    'Cutting-edge research focus',
-  ];
+export const scrapePhdData = async (keyword = '') => {
+  let retries = MAX_RETRIES;
   
-  // Randomly select 3-4 highlights
-  const count = 3 + Math.floor(Math.random() * 2);
-  const shuffled = [...allHighlights].sort(() => 0.5 - Math.random());
-  return shuffled.slice(0, count);
-};
+  while (retries > 0) {
+    try {
+      const response = await axios.get(`${API_URL}/api/scrape`, {
+        params: { keyword },
+        timeout: 30000,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache'
+        }
+      });
 
-export const scrapePhdData = async (keyword) => {
-  try {
-    const response = await fetch(`${BACKEND_URL}/api/scrape?keyword=${encodeURIComponent(keyword)}`);
-    if (!response.ok) {
-      throw new Error('Network response was not ok');
+      if (!response.data || !response.data.opportunities) {
+        throw new Error('Invalid response format from server');
+      }
+
+      let opportunities = response.data.opportunities.map(opp => {
+        const dates = extractDates(opp.description || '');
+        return {
+          ...opp,
+          applicationDeadline: dates.deadline,
+          startDate: dates.startDate,
+          scores: opp.scores || calculateBasicScores(opp)
+        };
+      });
+
+      // Remove duplicates and sort by overall score
+      opportunities = removeDuplicates(opportunities)
+        .sort((a, b) => (b.scores?.overall || 0) - (a.scores?.overall || 0));
+
+      return {
+        data: opportunities.length > 0 ? opportunities : getMockOpportunities(keyword),
+        errors: response.data.errors || [],
+        total: opportunities.length,
+        source: response.data.source || 'api'
+      };
+
+    } catch (error) {
+      console.error(`Attempt ${MAX_RETRIES - retries + 1} failed:`, error);
+      retries--;
+
+      if (retries > 0) {
+        // Wait with exponential backoff before retrying
+        const backoffDelay = getBackoffDelay(MAX_RETRIES - retries);
+        console.log(`Retrying in ${backoffDelay}ms...`);
+        await delay(backoffDelay);
+      } else {
+        // All retries failed, return mock data
+        console.error('All retry attempts failed, using mock data');
+        return {
+          data: getMockOpportunities(keyword),
+          errors: [{ message: error.message }],
+          total: 0,
+          source: 'mock'
+        };
+      }
     }
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching PhD data:', error);
-    throw error;
   }
 };
 
-const getMockOpportunities = () => {
-  return [
-    {
-      id: 1,
-      title: "Machine Learning Research Position",
-      university: "Stanford University",
-      location: "California, USA",
-      description: "Research position focusing on advanced machine learning algorithms and their applications in real-world scenarios.",
-      deadline: "March 2024",
-      funding: "Full funding + $40,000/year",
-      keywords: ["Machine Learning", "AI", "Computer Science", "Data Science"],
-      link: "https://example.com/position1"
-    },
-    {
-      id: 2,
-      title: "Quantum Computing Research",
-      university: "MIT",
-      location: "Massachusetts, USA",
-      description: "Cutting-edge research in quantum computing and quantum information systems.",
-      deadline: "April 2024",
-      funding: "Full funding + $45,000/year",
-      keywords: ["Quantum Computing", "Physics", "Computer Science"],
-      link: "https://example.com/position2"
+// Mock data for testing and fallback
+export const getMockOpportunities = (keyword) => [
+  {
+    title: "AI and Machine Learning PhD Position",
+    university: "Example University",
+    department: "Computer Science",
+    description: "Research position in advanced AI techniques...",
+    location: "London, UK",
+    fundingStatus: "Fully Funded",
+    link: "https://example.com/phd1",
+    scores: {
+      relevance: 90,
+      funding: 100,
+      university: 85,
+      location: 80,
+      overall: 89
     }
-  ].map(processOpportunity); // Process mock data through the same pipeline
-};
-
-export const scrapePhdOpportunities = async () => {
-  try {
-    console.log('Fetching opportunities from FindAPhD...');
-    const response = await api.get('/phd');
-    console.log('Response received, parsing HTML...');
-    const opportunities = await extractOpportunityDetails(response.data);
-    console.log(`Total results found: ${opportunities.length}`);
-    
-    if (opportunities.length > 0) {
-      console.log('Structuring data with AI...');
-      const structuredOpportunities = await structureDataWithAI(opportunities);
-      return structuredOpportunities;
+  },
+  {
+    title: "Deep Learning Research Opportunity",
+    university: "Tech Institute",
+    department: "Artificial Intelligence",
+    description: "PhD position focusing on deep neural networks...",
+    location: "California, USA",
+    fundingStatus: "Partially Funded",
+    link: "https://example.com/phd2",
+    scores: {
+      relevance: 95,
+      funding: 70,
+      university: 90,
+      location: 85,
+      overall: 85
     }
-    
-    return opportunities;
-    
-  } catch (error) {
-    console.error('Error scraping opportunities:', error);
-    throw error;
   }
-};
+];

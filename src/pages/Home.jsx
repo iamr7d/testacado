@@ -1,124 +1,113 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { HiAcademicCap, HiMail, HiCalendar, HiLightningBolt } from 'react-icons/hi';
-import SpaceBackground from '../components/SpaceBackground';
-
-const FeatureCard = ({ icon: Icon, title, description, to }) => (
-  <motion.div
-    whileHover={{ scale: 1.05 }}
-    whileTap={{ scale: 0.95 }}
-    className="bg-white rounded-3xl p-6 shadow-lg hover:shadow-xl transition-shadow duration-300"
-  >
-    <div className="bg-[#58CC02] w-12 h-12 rounded-2xl flex items-center justify-center mb-4">
-      <Icon className="w-6 h-6 text-white" />
-    </div>
-    <h3 className="text-xl font-bold text-gray-900 mb-2">{title}</h3>
-    <p className="text-gray-600 mb-4">{description}</p>
-    <Link
-      to={to}
-      className="inline-flex items-center text-[#58CC02] font-bold hover:text-[#46a302] transition-colors"
-    >
-      Learn more →
-    </Link>
-  </motion.div>
-);
+import { HiAcademicCap, HiCalendar, HiMail, HiLightningBolt, HiSearch } from 'react-icons/hi';
+import Header from '../components/Header';
 
 const Home = () => {
+  const features = [
+    {
+      icon: HiAcademicCap,
+      title: 'PhD Opportunities',
+      description: 'Discover research opportunities from top universities worldwide',
+      link: '/opportunities'
+    },
+    {
+      icon: HiCalendar,
+      title: 'Application Calendar',
+      description: 'Track application deadlines and important dates',
+      link: '/calendar'
+    },
+    {
+      icon: HiMail,
+      title: 'Email Generator',
+      description: 'Create professional emails for research inquiries',
+      link: '/email'
+    },
+    {
+      icon: HiLightningBolt,
+      title: 'AI Research Analysis',
+      description: 'Get AI-powered insights on research opportunities',
+      link: '/opportunities'
+    }
+  ];
+
   return (
-    <div className="min-h-screen bg-[#235390] relative overflow-hidden">
-      <SpaceBackground />
-      <div className="relative z-10">
-        {/* Hero Section */}
-        <div className="max-w-7xl mx-auto px-4 py-16 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-4xl md:text-6xl font-bold text-white mb-6"
+    <div className="min-h-screen bg-[#1e1e3f]">
+      <Header />
+      
+      {/* Hero Section */}
+      <div className="max-w-7xl mx-auto px-6 py-20">
+        <div className="text-center mb-16">
+          <h1 className="text-5xl font-bold text-white mb-6">
+            Find Your Perfect PhD Opportunity
+          </h1>
+          <p className="text-xl text-blue-200 max-w-2xl mx-auto">
+            Use AI-powered search to discover and analyze research opportunities that match your interests
+          </p>
+        </div>
+
+        {/* Search Bar */}
+        <div className="max-w-3xl mx-auto mb-20">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search for research opportunities..."
+              className="w-full bg-[#1e3a8a]/50 text-white placeholder-blue-400 border border-blue-700/30 rounded-2xl py-4 px-6 pl-14 text-lg focus:outline-none focus:border-blue-500/50 transition-colors"
+            />
+            <HiSearch className="absolute left-5 top-1/2 transform -translate-y-1/2 w-6 h-6 text-blue-400" />
+            <Link
+              to="/opportunities"
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-xl transition-colors"
             >
-              Find Your Perfect
-              <span className="text-[#58CC02]"> PhD Opportunity</span>
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-xl text-white/80 mb-8 max-w-2xl mx-auto"
-            >
-              Your journey to academic excellence starts here. Discover, apply, and succeed
-              with our comprehensive PhD search platform.
-            </motion.p>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="flex flex-wrap justify-center gap-4"
-            >
-              <Link to="/opportunities">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="bg-[#58CC02] text-white font-bold px-8 py-4 rounded-2xl shadow-lg shadow-[#58CC02]/20 hover:bg-[#46a302] transition-colors duration-300"
-                >
-                  Explore Opportunities
-                </motion.button>
-              </Link>
-              <Link to="/email-generator">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="bg-white/10 text-white font-bold px-8 py-4 rounded-2xl hover:bg-white/20 transition-colors duration-300"
-                >
-                  Generate Email
-                </motion.button>
-              </Link>
-            </motion.div>
+              Search
+            </Link>
           </div>
         </div>
 
-        {/* Features Section */}
-        <div className="max-w-7xl mx-auto px-4 py-16 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <FeatureCard
-              icon={HiAcademicCap}
-              title="PhD Opportunities"
-              description="Browse through hundreds of PhD positions from top universities worldwide."
-              to="/opportunities"
-            />
-            <FeatureCard
-              icon={HiMail}
-              title="Email Generator"
-              description="Create professional emails to reach out to potential supervisors."
-              to="/email-generator"
-            />
-            <FeatureCard
-              icon={HiCalendar}
-              title="Deadline Tracker"
-              description="Never miss an application deadline with our smart calendar."
-              to="/calendar"
-            />
-          </div>
+        {/* Features Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {features.map((feature, index) => {
+            const Icon = feature.icon;
+            return (
+              <Link
+                key={index}
+                to={feature.link}
+                className="group bg-[#1e3a8a]/50 border border-blue-700/30 rounded-2xl p-6 hover:bg-[#1e3a8a]/70 transition-all duration-200"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="bg-blue-500/20 p-3 rounded-xl">
+                    <Icon className="w-8 h-8 text-blue-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-blue-300 transition-colors">
+                      {feature.title}
+                    </h3>
+                    <p className="text-blue-200">
+                      {feature.description}
+                    </p>
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
         </div>
 
         {/* Stats Section */}
-        <div className="max-w-7xl mx-auto px-4 py-16 sm:px-6 lg:px-8">
-          <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8">
-            <div className="grid md:grid-cols-3 gap-8 text-center">
-              <div>
-                <h3 className="text-4xl font-bold text-[#58CC02] mb-2">500+</h3>
-                <p className="text-white/80">Active Opportunities</p>
-              </div>
-              <div>
-                <h3 className="text-4xl font-bold text-[#58CC02] mb-2">50+</h3>
-                <p className="text-white/80">Universities</p>
-              </div>
-              <div>
-                <h3 className="text-4xl font-bold text-[#58CC02] mb-2">1000+</h3>
-                <p className="text-white/80">Happy Students</p>
-              </div>
+        <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-6">
+          {[
+            { label: 'Universities', value: '500+' },
+            { label: 'Countries', value: '50+' },
+            { label: 'Opportunities', value: '1000+' },
+            { label: 'Research Fields', value: '100+' }
+          ].map((stat, index) => (
+            <div
+              key={index}
+              className="bg-[#1e3a8a]/30 border border-blue-700/30 rounded-xl p-6 text-center"
+            >
+              <div className="text-3xl font-bold text-white mb-2">{stat.value}</div>
+              <div className="text-blue-300">{stat.label}</div>
             </div>
-          </div>
+          ))}
         </div>
       </div>
     </div>

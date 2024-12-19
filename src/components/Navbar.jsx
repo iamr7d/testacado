@@ -66,7 +66,7 @@ const Navbar = () => {
             />
           </div>
 
-          {/* Right Side - Profile & Launch */}
+          {/* Right Side - Profile */}
           <div className="flex items-center gap-4">
             <NavLink 
               to="/profile" 
@@ -74,15 +74,6 @@ const Navbar = () => {
               label="Profile" 
               isActive={isActive('/profile')} 
             />
-            <Link to="/launch">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="bg-[#58CC02] text-white font-bold px-6 py-2 rounded-xl shadow-lg shadow-[#58CC02]/20 hover:bg-[#46a302] transition-colors duration-300"
-              >
-                Launch App
-              </motion.button>
-            </Link>
           </div>
         </div>
       </div>
