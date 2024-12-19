@@ -1,39 +1,43 @@
 import React from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
 import Home from './pages/Home';
 import Opportunities from './pages/Opportunities';
 import Calendar from './pages/Calendar';
 import EmailGenerator from './pages/EmailGenerator';
 import Profile from './pages/Profile';
-import PageTransition from './components/PageTransition';
 import ErrorBoundary from './components/ErrorBoundary';
 
 const router = createBrowserRouter(
   [
     {
       path: "/",
-      element: <PageTransition><Home /></PageTransition>
+      element: <Home />,
+      errorElement: <ErrorBoundary />
     },
     {
       path: "/opportunities",
-      element: <PageTransition><Opportunities /></PageTransition>
+      element: <Opportunities />,
+      errorElement: <ErrorBoundary />
     },
     {
       path: "/calendar",
-      element: <PageTransition><Calendar /></PageTransition>
+      element: <Calendar />,
+      errorElement: <ErrorBoundary />
     },
     {
       path: "/email",
-      element: <PageTransition><EmailGenerator /></PageTransition>
+      element: <EmailGenerator />,
+      errorElement: <ErrorBoundary />
     },
     {
       path: "/profile",
-      element: <PageTransition><Profile /></PageTransition>
+      element: <Profile />,
+      errorElement: <ErrorBoundary />
     },
     {
       path: "*",
-      element: <PageTransition><Home /></PageTransition>
+      element: <Home />,
+      errorElement: <ErrorBoundary />
     }
   ],
   {
@@ -50,16 +54,7 @@ const router = createBrowserRouter(
 
 function App() {
   return (
-    <ErrorBoundary>
-      <div className="app-container">
-        <RouterProvider 
-          router={router} 
-          future={{ 
-            v7_startTransition: true 
-          }} 
-        />
-      </div>
-    </ErrorBoundary>
+    <RouterProvider router={router} />
   );
 }
 

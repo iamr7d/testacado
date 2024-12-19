@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
 import Header from '../components/Header';
 import EditableSection from '../components/EditableSection';
 import { HiAcademicCap, HiPencil, HiSave, HiX, HiPlus, HiTrash } from 'react-icons/hi';
@@ -272,12 +271,7 @@ const Profile = () => {
     switch (activeTab) {
       case 'overview':
         return (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
-          >
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="bg-[#1e3a8a]/10 backdrop-blur-sm border border-blue-700/20 rounded-xl p-6 mb-8">
               <h1 className="text-3xl font-bold text-white mb-2">Your Research Profile</h1>
               <p className="text-blue-300/80">Manage and update your research information</p>
@@ -290,17 +284,12 @@ const Profile = () => {
                 onSave={(content) => handleSectionSave('overview', content)}
               />
             </div>
-          </motion.div>
+          </div>
         );
       
       case 'publications':
         return (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
-          >
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="bg-[#1e3a8a]/10 backdrop-blur-sm border border-blue-700/20 rounded-xl p-6 mb-8">
               <h1 className="text-3xl font-bold text-white mb-2">Publications</h1>
               <p className="text-blue-300/80">List of publications</p>
@@ -313,17 +302,12 @@ const Profile = () => {
                 onSave={(content) => handleSectionSave('publications', content)}
               />
             </div>
-          </motion.div>
+          </div>
         );
 
       case 'projects':
         return (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
-          >
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="bg-[#1e3a8a]/10 backdrop-blur-sm border border-blue-700/20 rounded-xl p-6 mb-8">
               <h1 className="text-3xl font-bold text-white mb-2">Projects</h1>
               <p className="text-blue-300/80">List of projects</p>
@@ -336,17 +320,12 @@ const Profile = () => {
                 onSave={(content) => handleSectionSave('projects', content)}
               />
             </div>
-          </motion.div>
+          </div>
         );
 
       case 'achievements':
         return (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
-          >
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="bg-[#1e3a8a]/10 backdrop-blur-sm border border-blue-700/20 rounded-xl p-6 mb-8">
               <h1 className="text-3xl font-bold text-white mb-2">Achievements</h1>
               <p className="text-blue-300/80">List of achievements</p>
@@ -359,17 +338,12 @@ const Profile = () => {
                 onSave={(content) => handleSectionSave('achievements', content)}
               />
             </div>
-          </motion.div>
+          </div>
         );
 
       case 'collaborations':
         return (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
-          >
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="bg-[#1e3a8a]/10 backdrop-blur-sm border border-blue-700/20 rounded-xl p-6 mb-8">
               <h1 className="text-3xl font-bold text-white mb-2">Collaborations</h1>
               <p className="text-blue-300/80">List of collaborations</p>
@@ -382,7 +356,7 @@ const Profile = () => {
                 onSave={(content) => handleSectionSave('collaborations', content)}
               />
             </div>
-          </motion.div>
+          </div>
         );
 
       default:

@@ -1,4 +1,4 @@
-import Groq from "groq-sdk";
+import { Groq } from 'groq-sdk';
 
 const MODELS = {
   DEFAULT: "mixtral-8x7b-32768",
@@ -6,30 +6,13 @@ const MODELS = {
   ANALYSIS: "mixtral-8x7b-32768"
 };
 
-// Get API key based on environment
-const getApiKeys = () => {
-  // For Node.js environment
-  if (typeof process !== 'undefined' && process.env) {
-    return [
-      process.env.GROQ_API_KEY,
-      process.env.GROQ_API_KEY_1,
-      process.env.GROQ_API_KEY_2,
-      process.env.GROQ_API_KEY_3,
-      process.env.GROQ_API_KEY_4
-    ].filter(key => key && key.startsWith('gsk_'));
-  }
-  
-  // For browser environment
-  return [
-    import.meta.env?.VITE_GROQ_API_KEY_1,
-    import.meta.env?.VITE_GROQ_API_KEY_2,
-    import.meta.env?.VITE_GROQ_API_KEY_3,
-    import.meta.env?.VITE_GROQ_API_KEY_4,
-    import.meta.env?.VITE_GROQ_API_KEY_5
-  ].filter(key => key && key.startsWith('gsk_'));
-};
+const API_KEYS = [
+  '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',
+  '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',
+  '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',
+  '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'
+];
 
-const API_KEYS = getApiKeys();
 let currentKeyIndex = 0;
 let lastRequestTime = 0;
 const MIN_REQUEST_INTERVAL = 1000; // Minimum time between requests in ms
@@ -400,4 +383,124 @@ export const analyzeOpportunity = async (opportunity) => {
   };
 
   return makeGroqRequest(requestFn);
+};
+
+export const analyzeOpportunityWithProfile = async (opportunity, userProfile) => {
+  const requestFn = async (groq) => {
+    try {
+      const prompt = `
+        Compare this PhD opportunity with the user's profile and provide a detailed compatibility analysis in JSON format.
+        
+        PhD Opportunity:
+        Title: ${opportunity.title}
+        Description: ${opportunity.description}
+        University: ${opportunity.university}
+        Department: ${opportunity.department}
+        Research Area: ${opportunity.researchArea || 'Not specified'}
+        
+        User Profile:
+        Education: ${userProfile.education}
+        Research Interests: ${userProfile.researchInterests}
+        Skills: ${userProfile.skills}
+        Publications: ${userProfile.publications}
+        
+        Provide scores (0-100) for:
+        - academicFit: How well the user's academic background matches
+        - researchAlignment: How well research interests align
+        - skillsMatch: How relevant the user's skills are
+        - overallCompatibility: Weighted average of all factors
+        
+        Return only valid JSON like this:
+        {
+          "academicFit": 85,
+          "researchAlignment": 90,
+          "skillsMatch": 75,
+          "overallCompatibility": 83,
+          "analysis": "Brief explanation of the scores"
+        }
+      `;
+
+      const response = await groq.chat.completions.create({
+        messages: [
+          {
+            role: "system",
+            content: "You are a PhD application analyzer that provides objective compatibility scores between candidates and opportunities. Focus on concrete matches in academic background, research interests, and skills."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        model: MODELS.DEFAULT,
+        temperature: 0.3,
+        max_tokens: 500,
+        top_p: 1,
+        stream: false
+      });
+
+      const content = response.choices[0]?.message?.content || '{}';
+      return JSON.parse(content);
+    } catch (error) {
+      console.error('Error analyzing opportunity with profile:', error);
+      return {
+        academicFit: 0,
+        researchAlignment: 0,
+        skillsMatch: 0,
+        overallCompatibility: 0,
+        analysis: "Error analyzing compatibility"
+      };
+    }
+  };
+
+  return makeGroqRequest(requestFn);
+};
+
+export const calculateCompatibilityScore = async (userProfile, opportunity) => {
+  if (!userProfile || !opportunity) {
+    console.warn('Missing userProfile or opportunity for compatibility calculation');
+    return 0;
+  }
+
+  try {
+    const prompt = `
+      Given a user profile and a PhD opportunity, calculate a compatibility score between 0 and 100.
+      Consider research interests, academic background, and requirements alignment.
+      
+      User Profile:
+      ${JSON.stringify(userProfile, null, 2)}
+      
+      PhD Opportunity:
+      ${JSON.stringify(opportunity, null, 2)}
+      
+      Return only a number between 0 and 100.
+    `;
+
+    const response = await makeGroqRequest(async (groq) => {
+      const completion = await groq.chat.completions.create({
+        messages: [{ role: "user", content: prompt }],
+        model: MODELS.FAST,
+        temperature: 0.3,
+        max_tokens: 5,
+      });
+      
+      if (!completion?.choices?.[0]?.message?.content) {
+        throw new Error('Invalid response from Groq API');
+      }
+      
+      return completion;
+    });
+
+    const scoreText = response.choices[0].message.content.trim();
+    const score = parseInt(scoreText);
+    
+    if (isNaN(score)) {
+      console.warn('Invalid score returned from API:', scoreText);
+      return 0;
+    }
+    
+    return Math.min(100, Math.max(0, score));
+  } catch (error) {
+    console.error('Error calculating compatibility score:', error);
+    return 0;
+  }
 };

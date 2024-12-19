@@ -1,347 +1,65 @@
 [
   {
-    "title": "Precision Medicine DTP  Chronic pain, analgesic prescribing, and cognitive decline",
-    "university": "University of EdinburghUniversity of EdinburghSchool of Philosophy, Psychology and Language Sciences",
-    "department": "",
-    "description": "Additional supervisors - Prof Sara Hgg (Karolinska Intitutet) & Dr Barbara Nicholl (University of Glasgow). Background: . Read more",
-    "location": "International",
-    "fundingStatus": "Unknown",
-    "supervisor": "Supervisors: Dr C Fawns-Ritchie, Prof RE Marioni, Dr S Cox",
-    "link": "https://www.findaphd.com/phds/project/precision-medicine-dtp-chronic-pain-analgesic-prescribing-and-cognitive-decline/?p176924",
+    "title": "PhD in Computer Science - AI and Machine Learning",
+    "university": "University of Oxford",
+    "department": "Department of Computer Science",
+    "description": "Research position in AI and Machine Learning focusing on deep learning and neural networks. The successful candidate will work on developing novel machine learning algorithms for real-world applications. Full funding available for qualified candidates.",
+    "location": "United Kingdom",
+    "fundingStatus": "Fully Funded",
+    "link": "https://www.cs.ox.ac.uk/admissions/graduate/dphil-computer-science",
     "source": "FindAPhD",
     "dates": {
-      "deadline": "2025-01-12T18:30:00.000Z",
-      "startDate": "2025-08-31T18:30:00.000Z"
+      "deadline": "2024-03-01T00:00:00.000Z",
+      "startDate": "2024-09-01T00:00:00.000Z"
     },
-    "scrapedAt": "2024-12-19T03:32:04.038Z",
     "scores": {
-      "relevance": 100,
-      "funding": 42,
-      "university": 87,
-      "location": 71,
-      "overall": 77
+      "relevance": 93,
+      "funding": 100,
+      "university": 100,
+      "location": 90,
+      "overall": 96
     }
   },
   {
-    "title": "Using data science and advanced imaging on patient-matched mini-avatars to improve precision medicine approaches",
-    "university": "University of GlasgowUniversity of GlasgowCollege of Medical, Veterinary and Life Sciences",
-    "department": "",
-    "description": "This PhD project aims to advance precision medicine by using data-driven approaches to study cancer using organoidsminiature, lab-grown versions of patient tumours. Read more",
-    "location": "International",
-    "fundingStatus": "Unknown",
-    "supervisor": "Supervisors: Prof D Bryant, Prof C Miller",
-    "link": "https://www.findaphd.com/phds/project/using-data-science-and-advanced-imaging-on-patient-matched-mini-avatars-to-improve-precision-medicine-approaches/?p177043",
+    "title": "Doctoral Research in Natural Language Processing",
+    "university": "Stanford University",
+    "department": "Computer Science Department",
+    "description": "Research position in NLP and machine learning, focusing on transformer architectures and large language models. Full scholarship with stipend available.",
+    "location": "USA",
+    "fundingStatus": "Fully Funded",
+    "link": "https://cs.stanford.edu/admissions/phd",
     "source": "FindAPhD",
     "dates": {
-      "deadline": "2025-01-12T18:30:00.000Z",
-      "startDate": "2025-08-31T18:30:00.000Z"
+      "deadline": "2024-02-28T00:00:00.000Z",
+      "startDate": "2024-09-15T00:00:00.000Z"
     },
-    "scrapedAt": "2024-12-19T03:32:04.036Z",
     "scores": {
-      "relevance": 100,
-      "funding": 42,
-      "university": 78,
-      "location": 71,
-      "overall": 75
+      "relevance": 30,
+      "funding": 100,
+      "university": 100,
+      "location": 100,
+      "overall": 76
     }
   },
   {
-    "title": "Precision Medicine DTP - Systematic evidence-based approach to identifying and tailoring inflammation modulating treatments for patients with intracerebral haemorrhage",
-    "university": "University of EdinburghUniversity of EdinburghCollege of Medicine and Veterinary Medicine",
-    "department": "",
-    "description": "Additional supervisor. Prof Tom Van Agtmael (University of Glasgow). Background. Read more",
-    "location": "International",
-    "fundingStatus": "Unknown",
-    "supervisor": "Supervisors: Dr N Samarasekera, Prof M Macleod, Dr CW Wong",
-    "link": "https://www.findaphd.com/phds/project/precision-medicine-dtp-systematic-evidence-based-approach-to-identifying-and-tailoring-inflammation-modulating-treatments-for-patients-with-intracerebral-haemorrhage/?p177065",
+    "title": "PhD Position in Data Science and Analytics",
+    "university": "University of Manchester",
+    "department": "School of Engineering",
+    "description": "Research opportunity in data science and analytics with focus on big data processing and machine learning applications. Working with industry partners on real-world problems.",
+    "location": "United Kingdom",
+    "fundingStatus": "Partially Funded",
+    "link": "https://www.manchester.ac.uk/study/postgraduate-research/",
     "source": "FindAPhD",
     "dates": {
-      "deadline": "2025-01-12T18:30:00.000Z",
-      "startDate": "2025-08-31T18:30:00.000Z"
+      "deadline": "2024-04-15T00:00:00.000Z",
+      "startDate": "2024-10-01T00:00:00.000Z"
     },
-    "scrapedAt": "2024-12-19T03:32:04.034Z",
     "scores": {
-      "relevance": 100,
-      "funding": 35,
-      "university": 84,
-      "location": 71,
-      "overall": 74
-    }
-  },
-  {
-    "title": "Precision Medicine DTP - Precision Medicine for Intraoperative Brain Cancer Surgery",
-    "university": "University of EdinburghUniversity of EdinburghCollege of Medicine and Veterinary Medicine",
-    "department": "",
-    "description": "iCASE Project - MRCs iCASE awards provide students with experience of collaborative research with a non-academic partner, enabling the student to spend a period of time with the partner (usually no less than three months over the lifetime of the PhD). Read more",
-    "location": "International",
-    "fundingStatus": "Unknown",
-    "supervisor": "Supervisors: Prof M Vendrell, Dr P Brennan",
-    "link": "https://www.findaphd.com/phds/project/precision-medicine-dtp-precision-medicine-for-intraoperative-brain-cancer-surgery/?p177061",
-    "source": "FindAPhD",
-    "dates": {
-      "deadline": "2025-01-12T18:30:00.000Z",
-      "startDate": "2025-08-31T18:30:00.000Z"
-    },
-    "scrapedAt": "2024-12-19T03:32:04.033Z",
-    "scores": {
-      "relevance": 100,
-      "funding": 0,
+      "relevance": 30,
+      "funding": 60,
       "university": 80,
-      "location": 50,
-      "overall": 61
-    }
-  },
-  {
-    "title": "Precision Medicine DTP - Development of a precision medicine-based gene therapy to treat atherosclerotic disease",
-    "university": "University of EdinburghUniversity of EdinburghCollege of Medicine and Veterinary Medicine",
-    "department": "",
-    "description": "About the Project. Additional supervisors - Prof Judith Sluimer (Maastricht University) & Prof Lars Maegdefessel (Karolinska Institutet). Read more",
-    "location": "International",
-    "fundingStatus": "Unknown",
-    "supervisor": "Supervisors: Prof A Baker, Prof S Rosser, Dr D E Newby",
-    "link": "https://www.findaphd.com/phds/project/precision-medicine-dtp-development-of-a-precision-medicine-based-gene-therapy-to-treat-atherosclerotic-disease/?p176987",
-    "source": "FindAPhD",
-    "dates": {
-      "deadline": "2025-01-12T18:30:00.000Z",
-      "startDate": "2025-08-31T18:30:00.000Z"
-    },
-    "scrapedAt": "2024-12-19T03:32:04.033Z",
-    "scores": {
-      "relevance": 100,
-      "funding": 0,
-      "university": 80,
-      "location": 50,
-      "overall": 61
-    }
-  },
-  {
-    "title": "Precision Medicine DTP - Investigating the impact of malaria and tuberculosis co-infections on disease outcomes",
-    "university": "University of EdinburghUniversity of EdinburghSchool of Biological Sciences",
-    "department": "",
-    "description": "Background. The combined global burden of tuberculosis (TB) and malaria results in over 2 million deaths every year, and is associated with over 100 million disability-adjusted life-years (DALYs). Read more",
-    "location": "International",
-    "fundingStatus": "Unknown",
-    "supervisor": "Supervisors: Dr JM Mooney, Dr M Moule",
-    "link": "https://www.findaphd.com/phds/project/precision-medicine-dtp-investigating-the-impact-of-malaria-and-tuberculosis-co-infections-on-disease-outcomes/?p177010",
-    "source": "FindAPhD",
-    "dates": {
-      "deadline": "2025-01-12T18:30:00.000Z",
-      "startDate": "2025-08-31T18:30:00.000Z"
-    },
-    "scrapedAt": "2024-12-19T03:32:04.034Z",
-    "scores": {
-      "relevance": 100,
-      "funding": 0,
-      "university": 80,
-      "location": 50,
-      "overall": 61
-    }
-  },
-  {
-    "title": "Precision Medicine DTP - Multi-modal single-cell analysis of human kidney tissue to identify novel anti-inflammatory therapies for kidney disease",
-    "university": "University of EdinburghUniversity of EdinburghCollege of Medicine and Veterinary Medicine",
-    "department": "",
-    "description": "Additional supervisor. Prof Thomas Otto (University of Glasgow). Background. Chronic kidney disease (CKD) is a major public health problem; it affects ~7% of the UK population and is a risk factor for cardiovascular disease and for end-stage kidney disease (ESRD), necessitating dialysis or transplantation. Read more",
-    "location": "International",
-    "fundingStatus": "Unknown",
-    "supervisor": "Supervisors: Dr BC Conway, Dr L Denby",
-    "link": "https://www.findaphd.com/phds/project/precision-medicine-dtp-multi-modal-single-cell-analysis-of-human-kidney-tissue-to-identify-novel-anti-inflammatory-therapies-for-kidney-disease/?p177053",
-    "source": "FindAPhD",
-    "dates": {
-      "deadline": "2025-01-12T18:30:00.000Z",
-      "startDate": "2025-08-31T18:30:00.000Z"
-    },
-    "scrapedAt": "2024-12-19T03:32:04.034Z",
-    "scores": {
-      "relevance": 100,
-      "funding": 0,
-      "university": 80,
-      "location": 50,
-      "overall": 61
-    }
-  },
-  {
-    "title": "Precision Medicine DTP - Mathematical modeling of pancreatic islet behaviour for the improvement of islet transplants in Type 1 Diabetes",
-    "university": "University of EdinburghUniversity of EdinburghCollege of Medicine and Veterinary Medicine",
-    "department": "",
-    "description": "Background:This project aims to improve the outcomes of islet transplantation through mathematical modelling and computational data analysis. Read more",
-    "location": "International",
-    "fundingStatus": "Unknown",
-    "supervisor": "Supervisors: Dr L Schumacher, Prof S Forbes",
-    "link": "https://www.findaphd.com/phds/project/precision-medicine-dtp-mathematical-modeling-of-pancreatic-islet-behaviour-for-the-improvement-of-islet-transplants-in-type-1-diabetes/?p177018",
-    "source": "FindAPhD",
-    "dates": {
-      "deadline": "2025-01-12T18:30:00.000Z",
-      "startDate": "2025-08-31T18:30:00.000Z"
-    },
-    "scrapedAt": "2024-12-19T03:32:04.035Z",
-    "scores": {
-      "relevance": 100,
-      "funding": 0,
-      "university": 80,
-      "location": 50,
-      "overall": 61
-    }
-  },
-  {
-    "title": "Precision Medicine DTP - Epigenetic profiling associated with environmental exposure stress for stratifying disease risk",
-    "university": "University of EdinburghUniversity of EdinburghCollege of Medicine and Veterinary Medicine",
-    "department": "",
-    "description": "Additional supervisor. Prof Roland Wolf (University of Dundee). Background. Read more",
-    "location": "International",
-    "fundingStatus": "Unknown",
-    "supervisor": "Supervisors: Dr S Pennings, Dr RI Illingworth",
-    "link": "https://www.findaphd.com/phds/project/precision-medicine-dtp-epigenetic-profiling-associated-with-environmental-exposure-stress-for-stratifying-disease-risk/?p177002",
-    "source": "FindAPhD",
-    "dates": {
-      "deadline": "2025-01-12T18:30:00.000Z",
-      "startDate": "2025-08-31T18:30:00.000Z"
-    },
-    "scrapedAt": "2024-12-19T03:32:04.035Z",
-    "scores": {
-      "relevance": 100,
-      "funding": 0,
-      "university": 80,
-      "location": 50,
-      "overall": 61
-    }
-  },
-  {
-    "title": "Precision Medicine DTP  Dissecting Macrophage-Fibroblast Cell Circuits in Liver Fibrosis using Spatial Omics",
-    "university": "University of EdinburghUniversity of EdinburghCollege of Medicine and Veterinary Medicine",
-    "department": "",
-    "description": "iCASE Project - MRCs iCASE awards provide students with experience of collaborative research with a non-academic partner, enabling the student to spend a period of time with the partner (usually no less than three months over the lifetime of the PhD). Read more",
-    "location": "International",
-    "fundingStatus": "Unknown",
-    "supervisor": "Supervisors: Dr P Ramachandran, Dr L Schumacher",
-    "link": "https://www.findaphd.com/phds/project/precision-medicine-dtp-dissecting-macrophage-fibroblast-cell-circuits-in-liver-fibrosis-using-spatial-omics/?p177001",
-    "source": "FindAPhD",
-    "dates": {
-      "deadline": "2025-01-12T18:30:00.000Z",
-      "startDate": "2025-08-31T18:30:00.000Z"
-    },
-    "scrapedAt": "2024-12-19T03:32:04.036Z",
-    "scores": {
-      "relevance": 100,
-      "funding": 0,
-      "university": 80,
-      "location": 50,
-      "overall": 61
-    }
-  },
-  {
-    "title": "Precision Medicine DTP - Developing a novel catalytic uncaging drug delivery system to deliver a focal therapy for post-radiotherapy tissue regeneration",
-    "university": "University of EdinburghUniversity of EdinburghCollege of Medicine and Veterinary Medicine",
-    "department": "",
-    "description": "Background. Read more",
-    "location": "International",
-    "fundingStatus": "Unknown",
-    "supervisor": "Supervisors: Dr E Emmerson, Dr A Unciti-Broceta",
-    "link": "https://www.findaphd.com/phds/project/precision-medicine-dtp-developing-a-novel-catalytic-uncaging-drug-delivery-system-to-deliver-a-focal-therapy-for-post-radiotherapy-tissue-regeneration/?p176984",
-    "source": "FindAPhD",
-    "dates": {
-      "deadline": "2025-01-12T18:30:00.000Z",
-      "startDate": "2025-08-31T18:30:00.000Z"
-    },
-    "scrapedAt": "2024-12-19T03:32:04.036Z",
-    "scores": {
-      "relevance": 100,
-      "funding": 0,
-      "university": 80,
-      "location": 50,
-      "overall": 61
-    }
-  },
-  {
-    "title": "Precision Medicine DTP - A Personalized Approach - Putting the Squeeze on Mesothelioma",
-    "university": "University of EdinburghUniversity of EdinburghCollege of Medicine and Veterinary Medicine",
-    "department": "",
-    "description": "Additional supervisor - Prof Janne Lehtioe (Karolinska Institutet). Background. Malignant Pleural Mesothelioma (MPM) is an asbestos induced, infiltrative, aggressive and incurable cancer that originates in the pleural lining of the lung. Read more",
-    "location": "International",
-    "fundingStatus": "Unknown",
-    "supervisor": "Supervisors: Dr C G Hansen, Dr VD DAngiolella, Dr P Bagnaninchi",
-    "link": "https://www.findaphd.com/phds/project/precision-medicine-dtp-a-personalized-approach-putting-the-squeeze-on-mesothelioma/?p176879",
-    "source": "FindAPhD",
-    "dates": {
-      "deadline": "2025-01-12T18:30:00.000Z",
-      "startDate": "2025-08-31T18:30:00.000Z"
-    },
-    "scrapedAt": "2024-12-19T03:32:04.037Z",
-    "scores": {
-      "relevance": 100,
-      "funding": 0,
-      "university": 80,
-      "location": 50,
-      "overall": 61
-    }
-  },
-  {
-    "title": "Precision Medicine DTP - Developing Multimodal Biomarkers and Computational Models for Objective and Subjective Impairments in Altered Cognitive States Using fNIRS, EEG, and Eye-Tracking",
-    "university": "University of EdinburghUniversity of EdinburghSchool of Informatics",
-    "department": "",
-    "description": "Additional supervisors. Dr Lars Muckli (University of Glasgow) & Prof Daniele Faccio (University of Glasgow). Background. Altered cognitive states such as mental fatigue, drowsiness, and brain fog have significant impact on human performance, quality of life, and long-term health. Read more",
-    "location": "International",
-    "fundingStatus": "Unknown",
-    "supervisor": "Supervisors: Dr B Peters, Dr A Onken",
-    "link": "https://www.findaphd.com/phds/project/precision-medicine-dtp-developing-multimodal-biomarkers-and-computational-models-for-objective-and-subjective-impairments-in-altered-cognitive-states-using-fnirs-eeg-and-eye-tracking/?p177075",
-    "source": "FindAPhD",
-    "dates": {
-      "deadline": "2025-01-12T18:30:00.000Z",
-      "startDate": "2025-08-31T18:30:00.000Z"
-    },
-    "scrapedAt": "2024-12-19T03:32:04.037Z",
-    "scores": {
-      "relevance": 100,
-      "funding": 0,
-      "university": 80,
-      "location": 50,
-      "overall": 61
-    }
-  },
-  {
-    "title": "Precision Medicine DTP  Development of pH-Sensitive Metal-Organic Framework (MOF) for Targeted Drug Delivery in Pancreatic Cancer Treatment",
-    "university": "University of EdinburghUniversity of EdinburghSchool of Engineering",
-    "department": "",
-    "description": "Additional supervisors. Prof Jennifer Morton (University of Glasgow) & Prof David Chang (University of Glasgow). Background. Pancreatic ductal adenocarcinoma (PDAC) remains one of the most aggressive malignancies, with a five-year survival rate of less than 5%1. Read more",
-    "location": "International",
-    "fundingStatus": "Unknown",
-    "supervisor": "Supervisors: Dr P Sharel E, Prof N Carragher",
-    "link": "https://www.findaphd.com/phds/project/precision-medicine-dtp-development-of-ph-sensitive-metal-organic-framework-mof-for-targeted-drug-delivery-in-pancreatic-cancer-treatment/?p177000",
-    "source": "FindAPhD",
-    "dates": {
-      "deadline": "2025-01-12T18:30:00.000Z",
-      "startDate": "2025-08-31T18:30:00.000Z"
-    },
-    "scrapedAt": "2024-12-19T03:32:04.037Z",
-    "scores": {
-      "relevance": 100,
-      "funding": 0,
-      "university": 80,
-      "location": 50,
-      "overall": 61
-    }
-  },
-  {
-    "title": "Research at UEA Faculty of Medicine and Health Sciences",
-    "university": "University of East AngliaFaculty of Medicine and Health Science",
-    "department": "",
-    "description": "At UEA our research portfolio for the Faculty of Medicine and Health Sciences is divided into three interlinked research areas. Metabolic Health encompasses research in cardiovascular, cancer, musculoskeletal, gastroenterology and microbiology. Read more",
-    "location": "International",
-    "fundingStatus": "Unknown",
-    "supervisor": "",
-    "link": "https://www.findaphd.com/phds/program/research-at-uea-faculty-of-medicine-and-health-sciences/?i297p6288",
-    "source": "FindAPhD",
-    "dates": {
-      "deadline": null,
-      "startDate": null
-    },
-    "scrapedAt": "2024-12-19T03:32:04.038Z",
-    "scores": {
-      "relevance": 100,
-      "funding": 0,
-      "university": 60,
-      "location": 50,
-      "overall": 57
+      "location": 100,
+      "overall": 60
     }
   }
 ]

@@ -1,14 +1,24 @@
 import axios from 'axios';
+import { analyzeOpportunityWithProfile, calculateCompatibilityScore } from './groqService';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
+const API_BASE_URL = 'http://localhost:3002/api';
+const API_URL = `${API_BASE_URL}`;
 
 // Constants
 const MAX_RETRIES = 3;
 const BASE_DELAY = 2000;
 const MAX_DELAY = 30000;
+const REQUEST_TIMEOUT = 120000;
+const RETRY_DELAY = 2000;
+
+// Helper function to generate unique ID
+const generateId = (opportunity) => {
+  const str = `${opportunity.title}-${opportunity.university}-${Date.now()}`;
+  return str.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+};
 
 // Helper function for delay
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Helper function for exponential backoff
 const getBackoffDelay = (retryCount) => Math.min(BASE_DELAY * Math.pow(2, retryCount), MAX_DELAY);
@@ -40,19 +50,8 @@ const extractDates = (text) => {
   };
 };
 
-// Helper function to remove duplicate opportunities
-const removeDuplicates = (opportunities) => {
-  const seen = new Set();
-  return opportunities.filter(opp => {
-    const key = `${opp.title}-${opp.university}`.toLowerCase();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-};
-
 // Helper function to calculate basic scores
-const calculateBasicScores = (opportunity) => {
+const calculateBasicScores = async (opportunity, userProfile = null) => {
   const scores = {
     relevance: 0,
     funding: 0,
@@ -60,134 +59,175 @@ const calculateBasicScores = (opportunity) => {
     location: 0
   };
 
-  // Calculate relevance score
-  if (opportunity.title) {
-    const relevantTerms = ['phd', 'doctoral', 'research', 'scholarship', 'fellowship'];
-    const titleLower = opportunity.title.toLowerCase();
-    scores.relevance = relevantTerms.reduce((score, term) => 
-      titleLower.includes(term) ? score + 20 : score, 0);
-  }
-
   // Calculate funding score
-  if (opportunity.fundingStatus) {
-    const fundingLower = opportunity.fundingStatus.toLowerCase();
-    if (fundingLower.includes('fully funded')) scores.funding = 100;
-    else if (fundingLower.includes('partial')) scores.funding = 60;
-    else if (fundingLower.includes('unfunded')) scores.funding = 20;
-    else scores.funding = 40;
+  const fundingStatus = opportunity.fundingStatus?.toLowerCase() || '';
+  if (fundingStatus.includes('fully funded')) {
+    scores.funding = 100;
+  } else if (fundingStatus.includes('partial')) {
+    scores.funding = 50;
   }
 
-  // Calculate university score
-  if (opportunity.university) {
-    const topUniversities = ['oxford', 'cambridge', 'harvard', 'mit', 'stanford'];
-    const uniLower = opportunity.university.toLowerCase();
-    scores.university = topUniversities.some(uni => uniLower.includes(uni)) ? 100 : 70;
+  // Calculate university score based on ranking or reputation
+  const universityName = opportunity.university?.toLowerCase() || '';
+  if (universityName) {
+    if (universityName.includes('oxford') || universityName.includes('cambridge') || 
+        universityName.includes('harvard') || universityName.includes('stanford')) {
+      scores.university = 100;
+    } else if (universityName.includes('university')) {
+      scores.university = 70;
+    }
   }
 
   // Calculate location score
-  if (opportunity.location) {
-    const preferredLocations = ['london', 'new york', 'california', 'tokyo', 'singapore'];
-    const locationLower = opportunity.location.toLowerCase();
-    scores.location = preferredLocations.some(loc => locationLower.includes(loc)) ? 100 : 70;
+  const location = opportunity.location?.toLowerCase() || '';
+  if (userProfile?.preferredLocations) {
+    const preferredLocations = userProfile.preferredLocations.map(loc => loc.toLowerCase());
+    if (preferredLocations.some(loc => location.includes(loc))) {
+      scores.location = 100;
+    }
   }
 
-  return scores;
+  // Calculate relevance score
+  const content = [
+    opportunity.title,
+    opportunity.description,
+    opportunity.department
+  ].map(s => (s || '').toLowerCase()).join(' ');
+
+  if (userProfile?.researchInterests) {
+    const interests = userProfile.researchInterests.map(interest => interest.toLowerCase());
+    const matchCount = interests.filter(interest => content.includes(interest)).length;
+    scores.relevance = Math.min(100, (matchCount / interests.length) * 100);
+  }
+
+  // Calculate overall score
+  const weights = {
+    relevance: 0.4,
+    funding: 0.3,
+    university: 0.2,
+    location: 0.1
+  };
+
+  const overallScore = Object.entries(weights).reduce((total, [key, weight]) => {
+    return total + (scores[key] * weight);
+  }, 0);
+
+  return {
+    ...scores,
+    score: Math.round(overallScore)
+  };
 };
 
-export const scrapePhdData = async (keyword = '') => {
+// Add new function for LLM compatibility scoring
+const calculateCompatibilityScoreWithGroq = async (userProfile, opportunity) => {
+  try {
+    const prompt = `
+      Given a user profile and a PhD opportunity, calculate a compatibility score between 0 and 100.
+      Consider research interests, academic background, and requirements alignment.
+      
+      User Profile:
+      ${JSON.stringify(userProfile, null, 2)}
+      
+      PhD Opportunity:
+      ${JSON.stringify(opportunity, null, 2)}
+      
+      Return only a number between 0 and 100.
+    `;
+
+    const response = await analyzeOpportunityWithProfile({
+      messages: [{ role: "user", content: prompt }],
+      model: "mixtral-8x7b-32768",
+      temperature: 0.3,
+      max_tokens: 5,
+    });
+
+    const score = parseInt(response.choices[0].message.content.trim());
+    return isNaN(score) ? 0 : Math.min(100, Math.max(0, score));
+  } catch (error) {
+    console.error('Error calculating compatibility score:', error);
+    return 0;
+  }
+};
+
+export const scrapePhdData = async (keyword = '', filters = {}, userProfile = null) => {
   let retries = MAX_RETRIES;
   
   while (retries > 0) {
     try {
-      const response = await axios.get(`${API_URL}/api/scrape`, {
-        params: { keyword },
-        timeout: 30000,
+      console.log('Attempting to fetch opportunities with keyword:', keyword);
+      
+      const timestamp = Date.now();
+      const response = await axios.get(`${API_URL}/scrape`, {
+        params: {
+          keyword: keyword.trim(),
+          timestamp,
+          filters
+        },
         headers: {
           'Content-Type': 'application/json',
           'Cache-Control': 'no-cache'
         }
       });
 
-      if (!response.data || !response.data.opportunities) {
+      if (!response.data?.opportunities || !Array.isArray(response.data.opportunities)) {
         throw new Error('Invalid response format from server');
       }
 
-      let opportunities = response.data.opportunities.map(opp => {
-        const dates = extractDates(opp.description || '');
-        return {
-          ...opp,
-          applicationDeadline: dates.deadline,
-          startDate: dates.startDate,
-          scores: opp.scores || calculateBasicScores(opp)
-        };
-      });
+      let opportunities = response.data.opportunities;
+      console.log('Received', opportunities.length, 'opportunities from server');
 
-      // Remove duplicates and sort by overall score
-      opportunities = removeDuplicates(opportunities)
-        .sort((a, b) => (b.scores?.overall || 0) - (a.scores?.overall || 0));
+      // Add IDs if they don't exist
+      opportunities = opportunities.map(opp => ({
+        ...opp,
+        id: opp.id || generateId(opp)
+      }));
 
-      return {
-        data: opportunities.length > 0 ? opportunities : getMockOpportunities(keyword),
-        errors: response.data.errors || [],
-        total: opportunities.length,
-        source: response.data.source || 'api'
-      };
+      // Calculate compatibility scores if userProfile is provided
+      if (userProfile && Object.keys(userProfile).length > 0) {
+        console.log('Calculating compatibility scores with user profile');
+        
+        const scoredOpportunities = await Promise.all(
+          opportunities.map(async (opportunity) => {
+            try {
+              const score = await calculateCompatibilityScore(userProfile, opportunity);
+              return {
+                ...opportunity,
+                score: score || 0
+              };
+            } catch (error) {
+              console.error('Error scoring opportunity:', error);
+              return {
+                ...opportunity,
+                score: 0
+              };
+            }
+          })
+        );
+
+        // Sort by score in descending order
+        opportunities = scoredOpportunities.sort((a, b) => (b.score || 0) - (a.score || 0));
+      }
+
+      return opportunities;
 
     } catch (error) {
-      console.error(`Attempt ${MAX_RETRIES - retries + 1} failed:`, error);
+      console.error('Error fetching opportunities:', error);
       retries--;
-
       if (retries > 0) {
-        // Wait with exponential backoff before retrying
-        const backoffDelay = getBackoffDelay(MAX_RETRIES - retries);
-        console.log(`Retrying in ${backoffDelay}ms...`);
-        await delay(backoffDelay);
+        console.log(`Retrying... ${retries} attempts remaining`);
+        await sleep(RETRY_DELAY);
       } else {
-        // All retries failed, return mock data
-        console.error('All retry attempts failed, using mock data');
-        return {
-          data: getMockOpportunities(keyword),
-          errors: [{ message: error.message }],
-          total: 0,
-          source: 'mock'
-        };
+        throw error;
       }
     }
   }
 };
 
-// Mock data for testing and fallback
-export const getMockOpportunities = (keyword) => [
-  {
-    title: "AI and Machine Learning PhD Position",
-    university: "Example University",
-    department: "Computer Science",
-    description: "Research position in advanced AI techniques...",
-    location: "London, UK",
-    fundingStatus: "Fully Funded",
-    link: "https://example.com/phd1",
-    scores: {
-      relevance: 90,
-      funding: 100,
-      university: 85,
-      location: 80,
-      overall: 89
-    }
-  },
-  {
-    title: "Deep Learning Research Opportunity",
-    university: "Tech Institute",
-    department: "Artificial Intelligence",
-    description: "PhD position focusing on deep neural networks...",
-    location: "California, USA",
-    fundingStatus: "Partially Funded",
-    link: "https://example.com/phd2",
-    scores: {
-      relevance: 95,
-      funding: 70,
-      university: 90,
-      location: 85,
-      overall: 85
-    }
-  }
-];
+// Export all functions for use in other files
+export {
+  calculateBasicScores,
+  cleanText,
+  extractDates,
+  generateId,
+  calculateCompatibilityScoreWithGroq
+};

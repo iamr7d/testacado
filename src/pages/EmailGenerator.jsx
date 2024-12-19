@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
 import { HiMail } from 'react-icons/hi';
 import Header from '../components/Header';
 
@@ -49,14 +48,14 @@ const EmailGenerator = () => {
                 Professor's Profile URL
               </label>
               <input
-                type="url"
+                type="text"
                 id="profileUrl"
-                className="w-full bg-[#1e1e2f] border border-blue-700/30 rounded-xl px-4 py-3 text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="https://university.edu/professor"
+                className="w-full bg-[#1e1e2f] border border-blue-700/30 rounded-xl py-3 px-4 text-white placeholder-blue-300/50 focus:outline-none focus:border-blue-500/50"
+                placeholder="Enter the URL of the professor's academic profile"
               />
             </div>
             
-            <button className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-xl transition-colors flex items-center justify-center space-x-2">
+            <button className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-xl">
               <span>Analyze Profile</span>
               <HiMail className="w-5 h-5" />
             </button>
