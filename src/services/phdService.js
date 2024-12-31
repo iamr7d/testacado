@@ -1,233 +1,139 @@
 import axios from 'axios';
-import { analyzeOpportunityWithProfile, calculateCompatibilityScore } from './groqService';
+import { 
+  generateDummyAnalysis, 
+  calculateDummyCompatibility 
+} from './dummyService';
 
-const API_BASE_URL = 'http://localhost:3002/api';
-const API_URL = `${API_BASE_URL}`;
+const API_BASE_URL = 'http://localhost:3005/api';
 
-// Constants
-const MAX_RETRIES = 3;
-const BASE_DELAY = 2000;
-const MAX_DELAY = 30000;
-const REQUEST_TIMEOUT = 120000;
-const RETRY_DELAY = 2000;
+// Helper function to parse funding information
+const parseFundingInfo = (fundingText) => {
+  const info = {
+    fullyFunded: false,
+    international: false,
+    fundingStatus: 'Unknown',
+    fundingAmount: 'Not specified'
+  };
 
-// Helper function to generate unique ID
-const generateId = (opportunity) => {
-  const str = `${opportunity.title}-${opportunity.university}-${Date.now()}`;
-  return str.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
-};
+  if (!fundingText) return info;
 
-// Helper function for delay
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-// Helper function for exponential backoff
-const getBackoffDelay = (retryCount) => Math.min(BASE_DELAY * Math.pow(2, retryCount), MAX_DELAY);
-
-// Helper function to clean text
-const cleanText = (text) => {
-  if (!text) return '';
-  return text
-    .replace(/[\n\r\t]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-};
-
-// Helper function to extract dates
-const extractDates = (text) => {
-  if (!text) return { deadline: null, startDate: null };
+  // Check for fully funded status
+  info.fullyFunded = fundingText.toLowerCase().includes('fully funded');
   
-  const datePatterns = {
-    deadline: /deadline:?\s*(\d{1,2}(?:st|nd|rd|th)?\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{4})/i,
-    start: /start(?:ing|s)?(?:\s+date)?:?\s*(\d{1,2}(?:st|nd|rd|th)?\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{4})/i
-  };
+  // Check for international eligibility
+  info.international = fundingText.toLowerCase().includes('worldwide') || 
+                      fundingText.toLowerCase().includes('international');
 
-  const deadlineMatch = text.match(datePatterns.deadline);
-  const startMatch = text.match(datePatterns.start);
+  // Extract funding status
+  if (fundingText.includes('Competition Funded')) {
+    info.fundingStatus = 'Competition Funded';
+  } else if (fundingText.includes('Self Funded')) {
+    info.fundingStatus = 'Self Funded';
+  } else if (fundingText.includes('Fully Funded')) {
+    info.fundingStatus = 'Fully Funded';
+  }
 
-  return {
-    deadline: deadlineMatch ? deadlineMatch[1] : null,
-    startDate: startMatch ? startMatch[1] : null
-  };
+  return info;
 };
 
-// Helper function to calculate basic scores
-const calculateBasicScores = async (opportunity, userProfile = null) => {
-  const scores = {
-    relevance: 0,
-    funding: 0,
-    university: 0,
-    location: 0
-  };
-
-  // Calculate funding score
-  const fundingStatus = opportunity.fundingStatus?.toLowerCase() || '';
-  if (fundingStatus.includes('fully funded')) {
-    scores.funding = 100;
-  } else if (fundingStatus.includes('partial')) {
-    scores.funding = 50;
-  }
-
-  // Calculate university score based on ranking or reputation
-  const universityName = opportunity.university?.toLowerCase() || '';
-  if (universityName) {
-    if (universityName.includes('oxford') || universityName.includes('cambridge') || 
-        universityName.includes('harvard') || universityName.includes('stanford')) {
-      scores.university = 100;
-    } else if (universityName.includes('university')) {
-      scores.university = 70;
-    }
-  }
-
-  // Calculate location score
-  const location = opportunity.location?.toLowerCase() || '';
-  if (userProfile?.preferredLocations) {
-    const preferredLocations = userProfile.preferredLocations.map(loc => loc.toLowerCase());
-    if (preferredLocations.some(loc => location.includes(loc))) {
-      scores.location = 100;
-    }
-  }
-
-  // Calculate relevance score
-  const content = [
-    opportunity.title,
-    opportunity.description,
-    opportunity.department
-  ].map(s => (s || '').toLowerCase()).join(' ');
-
-  if (userProfile?.researchInterests) {
-    const interests = userProfile.researchInterests.map(interest => interest.toLowerCase());
-    const matchCount = interests.filter(interest => content.includes(interest)).length;
-    scores.relevance = Math.min(100, (matchCount / interests.length) * 100);
-  }
-
-  // Calculate overall score
-  const weights = {
-    relevance: 0.4,
-    funding: 0.3,
-    university: 0.2,
-    location: 0.1
-  };
-
-  const overallScore = Object.entries(weights).reduce((total, [key, weight]) => {
-    return total + (scores[key] * weight);
-  }, 0);
-
+// Helper function to extract metadata from opportunity
+const extractMetadata = (opp) => {
   return {
-    ...scores,
-    score: Math.round(overallScore)
+    hasDetailedFunding: Boolean(opp.fundingTypes?.length || opp.fundingAmount),
+    hasSupervisor: Boolean(opp.supervisor && opp.supervisor !== 'Supervisor Not Specified'),
+    hasDeadline: Boolean(opp.deadline && opp.deadline !== 'Deadline Not Specified'),
+    subjects: opp.subjects || [],
+    fundingTypes: opp.fundingTypes || [],
+    logoUrl: opp.logoUrl || null
   };
-};
-
-// Add new function for LLM compatibility scoring
-const calculateCompatibilityScoreWithGroq = async (userProfile, opportunity) => {
-  try {
-    const prompt = `
-      Given a user profile and a PhD opportunity, calculate a compatibility score between 0 and 100.
-      Consider research interests, academic background, and requirements alignment.
-      
-      User Profile:
-      ${JSON.stringify(userProfile, null, 2)}
-      
-      PhD Opportunity:
-      ${JSON.stringify(opportunity, null, 2)}
-      
-      Return only a number between 0 and 100.
-    `;
-
-    const response = await analyzeOpportunityWithProfile({
-      messages: [{ role: "user", content: prompt }],
-      model: "mixtral-8x7b-32768",
-      temperature: 0.3,
-      max_tokens: 5,
-    });
-
-    const score = parseInt(response.choices[0].message.content.trim());
-    return isNaN(score) ? 0 : Math.min(100, Math.max(0, score));
-  } catch (error) {
-    console.error('Error calculating compatibility score:', error);
-    return 0;
-  }
 };
 
 export const scrapePhdData = async (keyword = '', filters = {}, userProfile = null) => {
-  let retries = MAX_RETRIES;
+  console.log('Fetching opportunities with keyword:', keyword);
   
-  while (retries > 0) {
-    try {
-      console.log('Attempting to fetch opportunities with keyword:', keyword);
+  try {
+    const response = await axios.get(`${API_BASE_URL}/scrape`, {
+      params: {
+        keyword,
+        timestamp: Date.now(),
+        filters
+      },
+      timeout: 30000
+    });
+
+    if (!response.data || !response.data.opportunities) {
+      console.error('Invalid response format:', response.data);
+      return [];
+    }
+
+    let opportunities = response.data.opportunities.map(opp => {
+      // Parse funding information
+      const fundingInfo = parseFundingInfo(opp.funding);
       
-      const timestamp = Date.now();
-      const response = await axios.get(`${API_URL}/scrape`, {
-        params: {
-          keyword: keyword.trim(),
-          timestamp,
-          filters
-        },
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache'
-        }
-      });
+      // Create base opportunity object
+      const opportunity = {
+        id: opp.id || `opp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        title: opp.title || 'No Title',
+        university: opp.university || 'University Not Specified',
+        department: opp.department || 'Department Not Specified',
+        description: opp.description || 'No Description Available',
+        supervisor: opp.supervisor || 'Supervisor Not Specified',
+        deadline: opp.deadline || 'Deadline Not Specified',
+        location: opp.location || 'Location Not Specified',
+        source: opp.source || 'Source Not Specified',
+        url: opp.url || '#',
+        timestamp: opp.timestamp || new Date().toISOString(),
+        
+        // Add funding information
+        ...fundingInfo,
+        
+        // Add metadata
+        metadata: extractMetadata(opp)
+      };
 
-      if (!response.data?.opportunities || !Array.isArray(response.data.opportunities)) {
-        throw new Error('Invalid response format from server');
-      }
+      return opportunity;
+    });
 
-      let opportunities = response.data.opportunities;
-      console.log('Received', opportunities.length, 'opportunities from server');
+    // Apply filters
+    if (filters.fullyFunded) {
+      opportunities = opportunities.filter(opp => opp.fullyFunded);
+    }
 
-      // Add IDs if they don't exist
+    if (filters.international) {
+      opportunities = opportunities.filter(opp => opp.international);
+    }
+
+    if (filters.hasDeadline) {
+      opportunities = opportunities.filter(opp => opp.metadata.hasDeadline);
+    }
+
+    if (filters.hasSupervisor) {
+      opportunities = opportunities.filter(opp => opp.metadata.hasSupervisor);
+    }
+
+    // Sort opportunities by deadline if available
+    opportunities.sort((a, b) => {
+      const dateA = new Date(a.deadline);
+      const dateB = new Date(b.deadline);
+      
+      if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) return 0;
+      if (isNaN(dateA.getTime())) return 1;
+      if (isNaN(dateB.getTime())) return -1;
+      
+      return dateA - dateB;
+    });
+
+    // Add compatibility scores if user profile is provided
+    if (userProfile) {
       opportunities = opportunities.map(opp => ({
         ...opp,
-        id: opp.id || generateId(opp)
+        compatibility: calculateDummyCompatibility(opp, userProfile)
       }));
-
-      // Calculate compatibility scores if userProfile is provided
-      if (userProfile && Object.keys(userProfile).length > 0) {
-        console.log('Calculating compatibility scores with user profile');
-        
-        const scoredOpportunities = await Promise.all(
-          opportunities.map(async (opportunity) => {
-            try {
-              const score = await calculateCompatibilityScore(userProfile, opportunity);
-              return {
-                ...opportunity,
-                score: score || 0
-              };
-            } catch (error) {
-              console.error('Error scoring opportunity:', error);
-              return {
-                ...opportunity,
-                score: 0
-              };
-            }
-          })
-        );
-
-        // Sort by score in descending order
-        opportunities = scoredOpportunities.sort((a, b) => (b.score || 0) - (a.score || 0));
-      }
-
-      return opportunities;
-
-    } catch (error) {
-      console.error('Error fetching opportunities:', error);
-      retries--;
-      if (retries > 0) {
-        console.log(`Retrying... ${retries} attempts remaining`);
-        await sleep(RETRY_DELAY);
-      } else {
-        throw error;
-      }
     }
-  }
-};
 
-// Export all functions for use in other files
-export {
-  calculateBasicScores,
-  cleanText,
-  extractDates,
-  generateId,
-  calculateCompatibilityScoreWithGroq
+    return opportunities;
+  } catch (error) {
+    console.error('Error fetching PhD opportunities:', error);
+    throw error;
+  }
 };

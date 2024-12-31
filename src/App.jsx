@@ -6,6 +6,7 @@ import Calendar from './pages/Calendar';
 import EmailGenerator from './pages/EmailGenerator';
 import Profile from './pages/Profile';
 import ErrorBoundary from './components/ErrorBoundary';
+import './styles/theme.css';
 
 const router = createBrowserRouter(
   [
@@ -54,7 +55,7 @@ const router = createBrowserRouter(
 
 function App() {
   return (
-    <RouterProvider router={router} />
+    <RouterProvider router={router} future={{ v7_startTransition: true }} />
   );
 }
 

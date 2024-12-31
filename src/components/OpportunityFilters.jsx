@@ -1,31 +1,32 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { HiAcademicCap, HiCash, HiGlobe, HiCalendar, HiInformationCircle } from 'react-icons/hi';
+import FilterPill from './FilterPill';
 
 const OpportunityFilters = ({ activeFilter, onFilterChange, totalCount = 0 }) => {
   const filters = [
     {
       id: 'all',
       label: 'All Opportunities',
-      icon: HiAcademicCap,
+      icon: <HiAcademicCap />,
       tooltip: 'View all available PhD opportunities'
     },
     {
       id: 'funded',
       label: 'Fully Funded',
-      icon: HiCash,
+      icon: <HiCash />,
       tooltip: 'Show only fully funded positions with stipend or scholarship'
     },
     {
       id: 'international',
       label: 'International',
-      icon: HiGlobe,
+      icon: <HiGlobe />,
       tooltip: 'Opportunities open to international students'
     },
     {
       id: 'upcoming',
       label: 'Upcoming Deadlines',
-      icon: HiCalendar,
+      icon: <HiCalendar />,
       tooltip: 'Positions with deadlines in the next 30 days'
     },
   ];
@@ -34,26 +35,13 @@ const OpportunityFilters = ({ activeFilter, onFilterChange, totalCount = 0 }) =>
     <div className="relative">
       <div className="flex flex-wrap gap-3 mb-8">
         {filters.map((filter) => (
-          <motion.button
-            key={filter.id}
-            onClick={() => onFilterChange(filter.id)}
-            className={`relative flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
-              activeFilter === filter.id
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
-                : 'bg-[#1e3a8a]/10 text-blue-300/80 hover:bg-[#1e3a8a]/20'
-            }`}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <div className="flex items-center gap-2">
-              {React.createElement(filter.icon, {
-                className: "w-5 h-5"
-              })}
-              <span>{filter.label}</span>
-            </div>
+          <div key={filter.id} className="relative">
+            <FilterPill
+              active={activeFilter === filter.id}
+              onClick={() => onFilterChange(filter.id)}
+              icon={filter.icon}
+              label={filter.label}
+            />
             
             {/* Tooltip */}
             <div className="group relative">
@@ -64,18 +52,7 @@ const OpportunityFilters = ({ activeFilter, onFilterChange, totalCount = 0 }) =>
                 <div className="absolute left-1/2 -translate-x-1/2 top-full w-2 h-2 bg-gray-900 transform rotate-45"></div>
               </div>
             </div>
-            
-            {activeFilter === filter.id && (
-              <motion.div
-                layoutId="activeFilter"
-                className="absolute inset-0 bg-blue-600 rounded-xl -z-10"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ type: "spring", duration: 0.5 }}
-              />
-            )}
-          </motion.button>
+          </div>
         ))}
       </div>
       

@@ -1,83 +1,145 @@
 import { Groq } from 'groq-sdk';
+import { config } from '../config/env.js';
 
 const MODELS = {
   DEFAULT: "mixtral-8x7b-32768",
-  FAST: "mixtral-8x7b-32768",
+  FAST: "llama2-70b-4096",
   ANALYSIS: "mixtral-8x7b-32768"
 };
 
-const API_KEYS = [
-  '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',
-  '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',
-  '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',
-  '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'
-];
+const MAX_RETRIES = 3;
+const RATE_LIMIT_DELAY = 1000; // 1 second delay between requests
+const MAX_CONCURRENT_REQUESTS = 5;
+const REQUEST_TIMEOUT = 30000; // 30 seconds
 
-let currentKeyIndex = 0;
-let lastRequestTime = 0;
-const MIN_REQUEST_INTERVAL = 1000; // Minimum time between requests in ms
+// Semaphore for limiting concurrent requests
+let activeRequests = 0;
+const requestQueue = [];
 
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-const getNextApiKey = () => {
-  const key = API_KEYS[currentKeyIndex];
-  currentKeyIndex = (currentKeyIndex + 1) % API_KEYS.length;
-  return key;
+const processQueue = async () => {
+  while (requestQueue.length > 0 && activeRequests < MAX_CONCURRENT_REQUESTS) {
+    const { resolve: queueResolve, reject: queueReject, fn } = requestQueue.shift();
+    try {
+      activeRequests++;
+      const result = await fn();
+      queueResolve(result);
+    } catch (error) {
+      queueReject(error);
+    } finally {
+      activeRequests--;
+      if (requestQueue.length > 0) {
+        processQueue();
+      }
+    }
+  }
+};
+
+const queueRequest = async (fn) => {
+  if (activeRequests < MAX_CONCURRENT_REQUESTS) {
+    activeRequests++;
+    try {
+      return await fn();
+    } finally {
+      activeRequests--;
+      if (requestQueue.length > 0) {
+        processQueue();
+      }
+    }
+  }
+
+  // Add timeout to queued requests
+  return Promise.race([
+    new Promise((resolve, reject) => {
+      requestQueue.push({ resolve, reject, fn });
+    }),
+    new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Request timeout in queue')), REQUEST_TIMEOUT)
+    )
+  ]);
+};
+
+const throttledRequest = async (requestFn) => {
+  let retries = 0;
+  let lastError = null;
+
+  const makeRequest = async () => {
+    try {
+      const result = await requestFn();
+      await wait(RATE_LIMIT_DELAY);
+      return result;
+    } catch (error) {
+      lastError = error;
+      
+      if (error.response?.status === 429 || error.message.includes('rate limit')) {
+        if (retries < MAX_RETRIES) {
+          retries++;
+          const backoffDelay = Math.pow(2, retries) * 1000;
+          console.log(`Rate limit hit. Waiting ${backoffDelay/1000} seconds before retry...`);
+          await wait(backoffDelay);
+          return makeRequest();
+        }
+      }
+      
+      // Add more specific error handling
+      if (error.response?.status === 401) {
+        throw new Error('Invalid API key or authentication error');
+      } else if (error.response?.status === 400) {
+        throw new Error('Invalid request: ' + (error.response.data?.error || error.message));
+      }
+      
+      throw error;
+    }
+  };
+
+  return queueRequest(makeRequest);
 };
 
 export const createGroqClient = () => {
-  const apiKey = getNextApiKey();
+  if (!config.GROQ_API_KEY) {
+    console.error('GROQ_API_KEY not found in environment variables');
+    throw new Error('GROQ_API_KEY not found in environment variables');
+  }
+
   return new Groq({
-    apiKey,
-    dangerouslyAllowBrowser: true
+    apiKey: config.GROQ_API_KEY,
+    dangerouslyAllowBrowser: true, // Required for browser environment
+    timeout: REQUEST_TIMEOUT
   });
 };
 
 export const makeGroqRequest = async (requestFn) => {
-  // Ensure minimum time between requests
-  const now = Date.now();
-  const timeSinceLastRequest = now - lastRequestTime;
-  if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
-    await sleep(MIN_REQUEST_INTERVAL - timeSinceLastRequest);
-  }
-
-  try {
+  return throttledRequest(async () => {
     const groq = createGroqClient();
-    const result = await requestFn(groq);
-    lastRequestTime = Date.now();
-    return result;
-  } catch (error) {
-    if (error.status === 429) {
-      const retryAfter = parseInt(error.headers?.['retry-after'] || '60', 10);
-      console.log(`Rate limit hit. Waiting ${retryAfter} seconds before retry...`);
-      await sleep(retryAfter * 1000);
-      return makeGroqRequest(requestFn); // Retry with next key
-    }
-    throw error;
-  }
-};
-
-export const getGroqCompletion = async (prompt, options) => {
-  const requestFn = async (groq) => {
     try {
-      const response = await groq.chat.completions.create({
-        messages: [
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        model: MODELS.DEFAULT,
-        temperature: options.temperature,
-        max_tokens: options.max_tokens,
-        top_p: options.top_p,
-        stream: false
-      });
-
-      return response;
+      return await requestFn(groq);
     } catch (error) {
+      console.error('Groq API error:', error);
+      if (error.response?.data) {
+        console.error('Groq API response:', error.response.data);
+      }
       throw error;
     }
+  });
+};
+
+export const getGroqCompletion = async (prompt, options = {}) => {
+  const requestFn = async (groq) => {
+    const completion = await groq.chat.completions.create({
+      messages: [{ role: "user", content: prompt }],
+      model: options.model || MODELS.DEFAULT,
+      temperature: options.temperature || 0.7,
+      max_tokens: options.max_tokens || 1000,
+      top_p: options.top_p || 1,
+      stream: false
+    });
+
+    if (!completion.choices?.[0]?.message?.content) {
+      throw new Error('Invalid response from Groq API');
+    }
+
+    return completion;
   };
 
   return makeGroqRequest(requestFn);
@@ -358,21 +420,12 @@ export const analyzeOpportunity = async (opportunity) => {
       `;
 
       const response = await groq.chat.completions.create({
-        messages: [
-          {
-            role: "system",
-            content: "You are a PhD application analyzer. Provide numerical scores based on the opportunity details. Only return valid JSON with the specified format."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        model: MODELS.DEFAULT,
+        messages: [{ role: "user", content: prompt }],
+        model: "mixtral-8x7b-32768",
         temperature: 0.3,
         max_tokens: 150,
         top_p: 1,
-        stream: false
+        stream: false,
       });
 
       const content = response.choices[0]?.message?.content || '{}';
@@ -389,57 +442,80 @@ export const analyzeOpportunityWithProfile = async (opportunity, userProfile) =>
   const requestFn = async (groq) => {
     try {
       const prompt = `
-        Compare this PhD opportunity with the user's profile and provide a detailed compatibility analysis in JSON format.
+        You are an expert academic advisor analyzing the compatibility between a PhD opportunity and a candidate's profile.
+        Provide a detailed analysis focusing on academic fit, research alignment, and skills match.
         
         PhD Opportunity:
         Title: ${opportunity.title}
         Description: ${opportunity.description}
         University: ${opportunity.university}
-        Department: ${opportunity.department}
+        Department: ${opportunity.department || 'Not specified'}
         Research Area: ${opportunity.researchArea || 'Not specified'}
+        Funding: ${opportunity.funding || 'Not specified'}
         
         User Profile:
         Education: ${userProfile.education}
         Research Interests: ${userProfile.researchInterests}
         Skills: ${userProfile.skills}
-        Publications: ${userProfile.publications}
+        Publications: ${userProfile.publications || 'None'}
         
-        Provide scores (0-100) for:
-        - academicFit: How well the user's academic background matches
-        - researchAlignment: How well research interests align
-        - skillsMatch: How relevant the user's skills are
-        - overallCompatibility: Weighted average of all factors
+        Analyze and score (0-100) based on these criteria:
+        1. Academic Fit (35%): How well the candidate's educational background matches the opportunity requirements
+        2. Research Alignment (40%): How closely the research interests and experience align with the project
+        3. Skills Match (25%): How relevant the candidate's technical and research skills are
         
-        Return only valid JSON like this:
+        The overall compatibility should be a weighted average of these scores.
+        
+        Return a JSON object with this exact structure:
         {
-          "academicFit": 85,
-          "researchAlignment": 90,
-          "skillsMatch": 75,
-          "overallCompatibility": 83,
-          "analysis": "Brief explanation of the scores"
+          "academicFit": number,
+          "researchAlignment": number,
+          "skillsMatch": number,
+          "overallCompatibility": number,
+          "analysis": string,
+          "matchingPoints": string[],
+          "areasForImprovement": string[]
         }
+        
+        Keep the analysis concise but informative, focusing on key points.
       `;
 
       const response = await groq.chat.completions.create({
-        messages: [
-          {
-            role: "system",
-            content: "You are a PhD application analyzer that provides objective compatibility scores between candidates and opportunities. Focus on concrete matches in academic background, research interests, and skills."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        model: MODELS.DEFAULT,
+        messages: [{ role: "user", content: prompt }],
+        model: MODELS.ANALYSIS,
         temperature: 0.3,
-        max_tokens: 500,
+        max_tokens: 800,
         top_p: 1,
-        stream: false
+        stream: false,
       });
 
-      const content = response.choices[0]?.message?.content || '{}';
-      return JSON.parse(content);
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error('Empty response from Groq API');
+      }
+
+      try {
+        const result = JSON.parse(content);
+        
+        // Validate response structure
+        const requiredFields = ['academicFit', 'researchAlignment', 'skillsMatch', 'overallCompatibility', 'analysis'];
+        const missingFields = requiredFields.filter(field => !(field in result));
+        
+        if (missingFields.length > 0) {
+          throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+        }
+
+        // Ensure scores are within valid range
+        result.academicFit = Math.min(100, Math.max(0, result.academicFit));
+        result.researchAlignment = Math.min(100, Math.max(0, result.researchAlignment));
+        result.skillsMatch = Math.min(100, Math.max(0, result.skillsMatch));
+        result.overallCompatibility = Math.min(100, Math.max(0, result.overallCompatibility));
+
+        return result;
+      } catch (parseError) {
+        console.error('Error parsing Groq response:', parseError);
+        throw parseError;
+      }
     } catch (error) {
       console.error('Error analyzing opportunity with profile:', error);
       return {
@@ -447,7 +523,9 @@ export const analyzeOpportunityWithProfile = async (opportunity, userProfile) =>
         researchAlignment: 0,
         skillsMatch: 0,
         overallCompatibility: 0,
-        analysis: "Error analyzing compatibility"
+        analysis: "Error analyzing compatibility: " + error.message,
+        matchingPoints: [],
+        areasForImprovement: ["Unable to analyze due to an error"]
       };
     }
   };
@@ -456,51 +534,82 @@ export const analyzeOpportunityWithProfile = async (opportunity, userProfile) =>
 };
 
 export const calculateCompatibilityScore = async (userProfile, opportunity) => {
-  if (!userProfile || !opportunity) {
-    console.warn('Missing userProfile or opportunity for compatibility calculation');
-    return 0;
-  }
+  const prompt = `
+    You are an expert academic advisor analyzing the compatibility between a PhD candidate and a research opportunity.
+    Provide a detailed analysis focusing on overall fit and specific areas of compatibility.
+    
+    User Profile:
+    ${JSON.stringify(userProfile, null, 2)}
+    
+    Research Opportunity:
+    ${JSON.stringify(opportunity, null, 2)}
+    
+    Consider these factors when calculating the score (0-100):
+    1. Academic Background (30%): Educational qualifications and research experience
+    2. Research Interest Alignment (35%): How well the candidate's interests match the opportunity
+    3. Technical Skills (20%): Relevant technical and research skills
+    4. Additional Factors (15%): Publications, projects, or other relevant experience
+    
+    Return a JSON object with this exact structure:
+    {
+      "score": number (0-100),
+      "explanation": string (concise explanation of the score),
+      "matchingPoints": string[] (list of 2-4 key strengths),
+      "improvementAreas": string[] (list of 1-3 areas for improvement)
+    }
+  `;
 
   try {
-    const prompt = `
-      Given a user profile and a PhD opportunity, calculate a compatibility score between 0 and 100.
-      Consider research interests, academic background, and requirements alignment.
-      
-      User Profile:
-      ${JSON.stringify(userProfile, null, 2)}
-      
-      PhD Opportunity:
-      ${JSON.stringify(opportunity, null, 2)}
-      
-      Return only a number between 0 and 100.
-    `;
-
-    const response = await makeGroqRequest(async (groq) => {
-      const completion = await groq.chat.completions.create({
-        messages: [{ role: "user", content: prompt }],
-        model: MODELS.FAST,
-        temperature: 0.3,
-        max_tokens: 5,
-      });
-      
-      if (!completion?.choices?.[0]?.message?.content) {
-        throw new Error('Invalid response from Groq API');
-      }
-      
-      return completion;
+    const completion = await getGroqCompletion(prompt, {
+      model: MODELS.ANALYSIS,
+      temperature: 0.3,
+      max_tokens: 1000
     });
 
-    const scoreText = response.choices[0].message.content.trim();
-    const score = parseInt(scoreText);
-    
-    if (isNaN(score)) {
-      console.warn('Invalid score returned from API:', scoreText);
-      return 0;
+    const content = completion.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('Empty response from Groq API');
     }
-    
-    return Math.min(100, Math.max(0, score));
+
+    try {
+      const result = JSON.parse(content);
+      
+      // Validate response structure
+      const requiredFields = ['score', 'explanation', 'matchingPoints', 'improvementAreas'];
+      const missingFields = requiredFields.filter(field => !(field in result));
+      
+      if (missingFields.length > 0) {
+        throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+      }
+
+      // Ensure score is within valid range
+      result.score = Math.min(100, Math.max(0, result.score));
+      
+      // Ensure arrays have content
+      if (!Array.isArray(result.matchingPoints) || result.matchingPoints.length === 0) {
+        result.matchingPoints = ["No specific matching points identified"];
+      }
+      if (!Array.isArray(result.improvementAreas) || result.improvementAreas.length === 0) {
+        result.improvementAreas = ["No specific improvement areas identified"];
+      }
+
+      return result;
+    } catch (parseError) {
+      console.error('Error parsing LLM response:', parseError);
+      return {
+        score: 70,
+        explanation: "Score calculated with limited confidence due to parsing error",
+        matchingPoints: ["Unable to parse detailed matching points"],
+        improvementAreas: ["Unable to parse improvement areas"]
+      };
+    }
   } catch (error) {
     console.error('Error calculating compatibility score:', error);
-    return 0;
+    return {
+      score: 70,
+      explanation: "Score calculated with limited confidence due to API error: " + error.message,
+      matchingPoints: ["Error occurred while analyzing matching points"],
+      improvementAreas: ["Error occurred while analyzing improvement areas"]
+    };
   }
 };

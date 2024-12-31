@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { HiHome, HiSearch, HiCalendar, HiMail, HiUser, HiAcademicCap, HiMenu, HiX } from 'react-icons/hi';
+import { HiHome, HiSearch, HiCalendar, HiMail, HiUser, HiMenu, HiX } from 'react-icons/hi';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -30,9 +30,11 @@ const Header = () => {
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               {/* Logo */}
-              <NavLink to="/" className="flex items-center space-x-2">
-                <HiAcademicCap className="w-8 h-8 text-blue-400" />
-                <span className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+              <NavLink to="/" className="flex items-center space-x-2 group">
+                <div className="transform group-hover:scale-110 transition-transform duration-200">
+                  <span className="text-3xl" role="img" aria-label="Avocado">🥑</span>
+                </div>
+                <span className="text-2xl font-bold bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent">
                   AvocadoSpace
                 </span>
               </NavLink>

@@ -11,7 +11,7 @@ import {
   HiInformationCircle,
   HiArrowRight,
 } from 'react-icons/hi';
-import { analyzeProfessorProfile, generateEmail, analyzeResearchFit } from '../services/groqService';
+import { generateTemplateEmail, analyzeProfessorProfile, analyzeResearchFit } from '../services/emailService';
 
 const Email = () => {
   const [loading, setLoading] = useState(false);
@@ -29,48 +29,32 @@ const Email = () => {
   const [error, setError] = useState('');
   const [currentStep, setCurrentStep] = useState(1);
 
-  const handleAnalyzeProfile = async (e) => {
-    e.preventDefault();
+  const analyzeProfessor = async () => {
     setLoading(true);
     setError('');
-    
     try {
-      const analysis = await analyzeProfessorProfile(professorUrl);
-      setProfessorInfo(analysis);
+      const info = await analyzeProfessorProfile(professorUrl);
+      setProfessorInfo(info);
       setCurrentStep(2);
     } catch (err) {
-      setError('Failed to analyze professor profile. Please try again.');
-      console.error(err);
-    } finally {
-      setLoading(false);
+      setError('Failed to analyze professor profile. Please check the URL and try again.');
     }
+    setLoading(false);
   };
 
-  const handleGenerateEmail = async (e) => {
-    e.preventDefault();
-    if (!professorInfo) {
-      setError('Please analyze professor profile first');
-      return;
-    }
-    
+  const generateEmailContent = async () => {
     setLoading(true);
     setError('');
-    
     try {
-      const [emailContent, fitAnalysis] = await Promise.all([
-        generateEmail(professorInfo, studentInfo),
-        analyzeResearchFit(professorInfo, studentInfo)
-      ]);
-      
-      setGeneratedEmail(emailContent);
-      setResearchFit(fitAnalysis);
+      const email = await generateTemplateEmail(studentInfo, professorInfo);
+      const fit = await analyzeResearchFit(studentInfo.research, professorInfo.research);
+      setGeneratedEmail(email);
+      setResearchFit(fit);
       setCurrentStep(3);
     } catch (err) {
-      setError('Failed to generate content. Please try again.');
-      console.error(err);
-    } finally {
-      setLoading(false);
+      setError('Failed to generate email. Please try again.');
     }
+    setLoading(false);
   };
 
   const copyToClipboard = () => {
@@ -125,7 +109,7 @@ const Email = () => {
                 <HiAcademicCap className="w-7 h-7 text-blue-400" />
                 <h2 className="text-2xl font-semibold">Professor Profile Analysis</h2>
               </div>
-              <form onSubmit={handleAnalyzeProfile} className="space-y-6">
+              <form onSubmit={(e) => { e.preventDefault(); analyzeProfessor(); }} className="space-y-6">
                 <div>
                   <label className="block text-blue-200 mb-2">Professor's Profile URL</label>
                   <input
@@ -175,7 +159,7 @@ const Email = () => {
                 </div>
               )}
 
-              <form onSubmit={handleGenerateEmail} className="space-y-6">
+              <form onSubmit={(e) => { e.preventDefault(); generateEmailContent(); }} className="space-y-6">
                 <div>
                   <label className="block text-blue-200 mb-2">Full Name</label>
                   <input

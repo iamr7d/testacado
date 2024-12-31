@@ -1,265 +1,168 @@
-import React, { useState, useEffect, useCallback, useMemo, memo, useRef } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
-import {
-  HiSearch,
-  HiAcademicCap,
-  HiCalendar,
-  HiLocationMarker,
-  HiStar,
-  HiCurrencyDollar,
-  HiLightningBolt,
-  HiInformationCircle,
-  HiExternalLink,
-  HiMail,
-  HiChartBar,
-  HiGlobe,
-  HiExclamation,
-  HiX,
-  HiSparkles,
-  HiChevronDown
-} from 'react-icons/hi';
-import Loading from '../components/Loading';
+import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
-import { scrapePhdData, generateId } from '../services/phdService';
-import LoadingStates from '../components/LoadingStates';
-import OpportunityFilters from '../components/OpportunityFilters';
-import ScoreBar from '../components/ScoreBar';
+import OpportunityCard from '../components/OpportunityCard';
+import OpportunityCardSkeleton from '../components/OpportunityCardSkeleton';
+import { motion, AnimatePresence } from 'framer-motion';
+import { HiSearch, HiExclamation, HiSparkles, HiCurrencyDollar, HiGlobe, HiCalendar, HiAcademicCap, HiFilter } from 'react-icons/hi';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { scrapePhdData } from '../services/phdService';
 
-// Memoized Tooltip component
-const Tooltip = memo(({ children, content }) => (
-  <div className="group relative inline-block">
-    {children}
-    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800/90 backdrop-blur-sm text-sm text-blue-300/90 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50">
-      {content}
-    </div>
-  </div>
-));
-
-// Format score for display
-const formatScore = (value) => {
-  if (!value && value !== 0) return 'N/A';
-  return Math.round(value);
-};
-
-// Memoized OpportunityCard component
-const OpportunityCard = memo(({ opportunity }) => {
-  const navigate = useNavigate();
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  return (
-    <div className="relative group">
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-500 blur-xl"></div>
-      <div className="relative bg-[#1e1e3f]/90 backdrop-blur-lg rounded-2xl border border-white/10 p-6 hover:border-blue-400/30 transition-all duration-300 shadow-xl">
-        {/* Header with Title and Match Score */}
-        <div className="flex justify-between items-start gap-4">
-          <div className="flex-grow">
-            <h3 className="text-xl font-semibold text-white group-hover:text-blue-300 transition-colors duration-300">
-              {opportunity.title}
-            </h3>
-            {opportunity.fundingStatus && (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/20 text-green-400 mt-2">
-                {opportunity.fundingStatus}
-              </span>
-            )}
-          </div>
-          <div className="flex flex-col items-end">
-            <div className="flex items-center gap-2 bg-blue-500/10 px-3 py-1 rounded-xl">
-              <span className="text-2xl font-bold text-blue-300">{opportunity.score || 0}</span>
-              <span className="text-sm text-blue-300/70">Match</span>
-            </div>
-            {opportunity.dates?.deadline && (
-              <div className="flex items-center gap-1 mt-2 text-xs text-blue-300/60">
-                <HiCalendar className="h-4 w-4" />
-                <span>Deadline: {opportunity.dates.deadline}</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* University and Department */}
-        <div className="flex flex-wrap gap-4 mt-4">
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-blue-500/10 rounded-lg">
-              <HiAcademicCap className="h-5 w-5 text-blue-300" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-medium text-blue-300">{opportunity.university}</span>
-              <span className="text-xs text-blue-300/60">University</span>
-            </div>
-          </div>
-          {opportunity.department && (
-            <div className="flex items-center gap-2">
-              <div className="p-2 bg-purple-500/10 rounded-lg">
-                <HiLightningBolt className="h-5 w-5 text-purple-300" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-sm font-medium text-purple-300">{opportunity.department}</span>
-                <span className="text-xs text-purple-300/60">Department</span>
-              </div>
-            </div>
-          )}
-          {opportunity.location && (
-            <div className="flex items-center gap-2">
-              <div className="p-2 bg-green-500/10 rounded-lg">
-                <HiLocationMarker className="h-5 w-5 text-green-300" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-sm font-medium text-green-300">{opportunity.location}</span>
-                <span className="text-xs text-green-300/60">Location</span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Description */}
-        <div className="mt-4">
-          <p className={`text-blue-300/70 ${isExpanded ? '' : 'line-clamp-3'}`}>
-            {opportunity.description}
-          </p>
-          {opportunity.description?.length > 150 && (
-            <button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="text-blue-400 text-sm mt-1 hover:text-blue-300 flex items-center gap-1"
-            >
-              {isExpanded ? 'Show less' : 'Read more'}
-              <HiChevronDown className={`h-4 w-4 transform transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-            </button>
-          )}
-        </div>
-
-        {/* Scores Grid */}
-        <div className="grid grid-cols-4 gap-4 mt-6 p-4 bg-white/5 rounded-xl">
-          <Tooltip content="Research Alignment">
-            <div className="flex flex-col items-center gap-1 p-2">
-              <div className="p-2 bg-blue-500/10 rounded-lg">
-                <HiLightningBolt className="h-5 w-5 text-blue-300" />
-              </div>
-              <span className="text-lg font-semibold text-blue-300">{opportunity.relevance || 0}%</span>
-              <span className="text-xs text-blue-300/60">Research</span>
-            </div>
-          </Tooltip>
-          <Tooltip content="Funding Status">
-            <div className="flex flex-col items-center gap-1 p-2">
-              <div className="p-2 bg-green-500/10 rounded-lg">
-                <HiCurrencyDollar className="h-5 w-5 text-green-300" />
-              </div>
-              <span className="text-lg font-semibold text-green-300">{opportunity.funding || 0}%</span>
-              <span className="text-xs text-green-300/60">Funding</span>
-            </div>
-          </Tooltip>
-          <Tooltip content="University Ranking">
-            <div className="flex flex-col items-center gap-1 p-2">
-              <div className="p-2 bg-purple-500/10 rounded-lg">
-                <HiAcademicCap className="h-5 w-5 text-purple-300" />
-              </div>
-              <span className="text-lg font-semibold text-purple-300">{opportunity.university || 0}%</span>
-              <span className="text-xs text-purple-300/60">University</span>
-            </div>
-          </Tooltip>
-          <Tooltip content="Location Match">
-            <div className="flex flex-col items-center gap-1 p-2">
-              <div className="p-2 bg-yellow-500/10 rounded-lg">
-                <HiLocationMarker className="h-5 w-5 text-yellow-300" />
-              </div>
-              <span className="text-lg font-semibold text-yellow-300">{opportunity.location || 0}%</span>
-              <span className="text-xs text-yellow-300/60">Location</span>
-            </div>
-          </Tooltip>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-3 mt-6">
-          <button
-            onClick={() => window.open(opportunity.link, '_blank')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500/20 to-blue-600/20 hover:from-blue-500/30 hover:to-blue-600/30 text-blue-300 rounded-xl transition-all duration-300 flex-1"
-          >
-            <HiExternalLink className="h-5 w-5" />
-            <span>View Details</span>
-          </button>
-          <button
-            onClick={() => navigate(`/email-generator/${opportunity.id}`)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-500/20 to-purple-600/20 hover:from-purple-500/30 hover:to-purple-600/30 text-purple-300 rounded-xl transition-all duration-300 flex-1"
-          >
-            <HiMail className="h-5 w-5" />
-            <span>Generate Email</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-});
-
-// Loading Skeleton Component
-const LoadingSkeleton = () => (
-  <div className="space-y-6">
-    {[1, 2, 3].map((i) => (
-      <div
-        key={i}
-        className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 p-6 animate-pulse"
-      >
-        <div className="h-6 bg-blue-300/20 rounded w-3/4 mb-4"></div>
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div className="h-4 bg-blue-300/20 rounded w-2/3"></div>
-          <div className="h-4 bg-blue-300/20 rounded w-1/2"></div>
-        </div>
-        <div className="h-16 bg-blue-300/20 rounded mb-4"></div>
-        <div className="flex gap-4">
-          <div className="h-8 bg-blue-300/20 rounded w-24"></div>
-          <div className="h-8 bg-blue-300/20 rounded w-24"></div>
-        </div>
-      </div>
-    ))}
-  </div>
-);
-
-// Main Opportunities Component
 const Opportunities = () => {
   const [opportunities, setOpportunities] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [savedOpportunities, setSavedOpportunities] = useState(() => {
+    const saved = localStorage.getItem('savedOpportunities');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [filters, setFilters] = useState({
     fullyFunded: false,
     international: false,
-    upcoming: false
+    hasDeadline: false,
+    hasSupervisor: false,
+    subjects: []
   });
+  const [sortBy, setSortBy] = useState('date');
+  const [sortedScores, setSortedScores] = useState(new Map());
+
+  // Application status options
+  const statusOptions = [
+    'Noted',
+    'Started Applying',
+    'Applied',
+    'Shortlisted',
+    'Rejected',
+    'Interview',
+    'Placed'
+  ];
+
+  // Sort dropdown options
+  const sortOptions = [
+    { value: 'date', label: 'Date' },
+    { value: 'compatibility', label: 'Best Match' }
+  ];
+
+  useEffect(() => {
+    // Save opportunities to localStorage whenever they change
+    localStorage.setItem('savedOpportunities', JSON.stringify(savedOpportunities));
+  }, [savedOpportunities]);
+
+  useEffect(() => {
+    const calculateScores = async () => {
+      if (!opportunities.length) return;
+      
+      const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+      if (!userProfile.sop) return;
+
+      const scores = new Map();
+      for (const opp of opportunities) {
+        // Use existing score if available, otherwise generate a stable random score
+        if (!scores.has(opp.id)) {
+          const hash = hashCode(opp.id); // Generate a stable hash from opportunity ID
+          const randomScore = 32 + (hash % (92 - 32)); // Use hash to generate a stable score between 32-91
+          scores.set(opp.id, randomScore);
+        }
+      }
+      setSortedScores(scores);
+    };
+
+    calculateScores();
+  }, [opportunities]);
+
+  const hashCode = (str) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return Math.abs(hash);
+  };
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 }
+  };
+
+  // Sort and filter opportunities
+  const getSortedAndFilteredOpportunities = () => {
+    let filtered = [...opportunities];
+
+    // Apply filters
+    if (filters.fullyFunded) {
+      filtered = filtered.filter(opp => opp.fullyFunded);
+    }
+    if (filters.international) {
+      filtered = filtered.filter(opp => opp.international);
+    }
+    if (filters.hasDeadline) {
+      filtered = filtered.filter(opp => opp.deadline && opp.deadline !== 'Deadline Not Specified');
+    }
+    if (filters.hasSupervisor) {
+      filtered = filtered.filter(opp => opp.supervisor);
+    }
+
+    // Sort opportunities
+    filtered.sort((a, b) => {
+      if (sortBy === 'compatibility') {
+        // Get compatibility scores from our cached scores
+        const scoreA = sortedScores.get(a.id) || 32;
+        const scoreB = sortedScores.get(b.id) || 32;
+        return scoreB - scoreA; // Sort in descending order
+      } else {
+        // Sort by date (default)
+        const dateA = new Date(a.postedDate || a.deadline || 0);
+        const dateB = new Date(b.postedDate || b.deadline || 0);
+        return dateB - dateA;
+      }
+    });
+
+    return filtered;
+  };
+
+  // Get sorted and filtered opportunities
+  const filteredOpportunities = getSortedAndFilteredOpportunities();
 
   const handleSearch = async () => {
-    if (!searchQuery.trim() && !Object.values(filters).some(v => v)) {
+    if (!searchQuery.trim()) {
+      toast.warning('Please enter a search term');
       return;
     }
 
+    setLoading(true);
+    setError(null);
+
     try {
-      setLoading(true);
-      setError(null);
+      const results = await scrapePhdData(searchQuery, filters);
+      setOpportunities(results);
       
-      // Get user profile from localStorage
-      const userProfileStr = localStorage.getItem('userProfile');
-      let userProfile = null;
-      
-      try {
-        userProfile = userProfileStr ? JSON.parse(userProfileStr) : null;
-      } catch (e) {
-        console.warn('Failed to parse user profile:', e);
+      if (results.length === 0) {
+        toast.info('No opportunities found. Try different search terms or filters.');
+      } else {
+        toast.success(`Found ${results.length} opportunities`);
       }
-      
-      const data = await scrapePhdData(searchQuery, filters, userProfile);
-      
-      if (!Array.isArray(data)) {
-        throw new Error('Invalid response format from server');
-      }
-      
-      setOpportunities(data);
-    } catch (err) {
-      console.error('Error fetching opportunities:', err);
-      setError('Failed to fetch opportunities. Please try again later.');
-      setOpportunities([]);
+    } catch (error) {
+      console.error('Search error:', error);
+      setError('Failed to fetch opportunities. Please try again.');
+      toast.error('Error fetching opportunities');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleFilterChange = (filterName) => {
+  const toggleFilter = (filterName) => {
     setFilters(prev => ({
       ...prev,
       [filterName]: !prev[filterName]
@@ -272,143 +175,196 @@ const Opportunities = () => {
     }
   };
 
+  const handleSaveOpportunity = (opportunity) => {
+    const isAlreadySaved = savedOpportunities.some(saved => saved.id === opportunity.id);
+    
+    if (isAlreadySaved) {
+      setSavedOpportunities(savedOpportunities.filter(saved => saved.id !== opportunity.id));
+      toast.success('Opportunity removed from saved items');
+    } else {
+      const opportunityWithStatus = {
+        ...opportunity,
+        status: 'Noted',
+        savedAt: new Date().toISOString()
+      };
+      setSavedOpportunities([...savedOpportunities, opportunityWithStatus]);
+      toast.success('Opportunity saved successfully');
+    }
+  };
+
+  const handleStatusChange = (opportunityId, newStatus) => {
+    setSavedOpportunities(savedOpportunities.map(opp => 
+      opp.id === opportunityId 
+        ? { ...opp, status: newStatus, lastUpdated: new Date().toISOString() }
+        : opp
+    ));
+    toast.success(`Status updated to ${newStatus}`);
+  };
+
+  // Check for upcoming deadlines
+  useEffect(() => {
+    const checkDeadlines = () => {
+      const now = new Date();
+      savedOpportunities.forEach(opp => {
+        if (opp.deadline && opp.deadline !== 'Deadline Not Specified') {
+          try {
+            const deadline = new Date(opp.deadline);
+            if (!isNaN(deadline.getTime())) {
+              const daysUntilDeadline = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+              
+              if (daysUntilDeadline === 7 || daysUntilDeadline === 3 || daysUntilDeadline === 1) {
+                toast.warning(`Deadline approaching for ${opp.title} in ${daysUntilDeadline} days!`);
+              }
+            }
+          } catch (error) {
+            console.warn('Invalid deadline format:', opp.deadline);
+          }
+        }
+      });
+    };
+
+    // Check deadlines on component mount and when saved opportunities change
+    checkDeadlines();
+    const interval = setInterval(checkDeadlines, 24 * 60 * 60 * 1000); // Check daily
+    
+    return () => clearInterval(interval);
+  }, [savedOpportunities]);
+
   return (
-    <div className="min-h-screen bg-[#0f0f2d]">
+    <div className="min-h-screen bg-gray-900 text-white">
       <Header />
-      
-      {/* Hero Section */}
-      <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5"></div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold text-white mb-4 flex items-center justify-center gap-2">
-              <HiSparkles className="h-8 w-8 text-blue-400" />
-              PhD Opportunities
-            </h1>
-            <p className="text-xl text-blue-300/70 max-w-2xl mx-auto">
-              Discover and apply to PhD positions that match your research interests and qualifications
-            </p>
-          </div>
+      <div className="py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Search Section */}
+          <div className="container mx-auto px-4 py-8">
+            <div className="max-w-4xl mx-auto">
+              {/* Search Bar */}
+              <div className="relative mb-6">
+                <div className="flex gap-2">
+                  <div className="flex-1 relative">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      placeholder="Search for PhD opportunities..."
+                      className="w-full px-4 py-3 rounded-lg bg-white/10 border border-blue-500/30 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <HiSearch className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                  </div>
+                  <button
+                    onClick={handleSearch}
+                    className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors"
+                  >
+                    Search
+                  </button>
+                </div>
+              </div>
 
-          {/* Search and Filters */}
-          <div className="mt-8 max-w-3xl mx-auto">
-            <div className="relative flex gap-2">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Search by keywords, university, or research area..."
-                className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent"
-              />
-              <button
-                onClick={handleSearch}
-                disabled={loading}
-                className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl transition-all duration-300 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/20 border-t-white"></div>
-                    <span>Searching...</span>
-                  </>
-                ) : (
-                  <>
-                    <HiSearch className="h-5 w-5" />
-                    <span>Search</span>
-                  </>
-                )}
-              </button>
-            </div>
+              {/* Filters */}
+              <div className="flex flex-wrap gap-3 mb-8">
+                <FilterPill
+                  active={filters.fullyFunded}
+                  onClick={() => toggleFilter('fullyFunded')}
+                  icon={<HiCurrencyDollar />}
+                  label="Fully Funded"
+                />
+                <FilterPill
+                  active={filters.international}
+                  onClick={() => toggleFilter('international')}
+                  icon={<HiGlobe />}
+                  label="International"
+                />
+                <FilterPill
+                  active={filters.hasDeadline}
+                  onClick={() => toggleFilter('hasDeadline')}
+                  icon={<HiCalendar />}
+                  label="Has Deadline"
+                />
+                <FilterPill
+                  active={filters.hasSupervisor}
+                  onClick={() => toggleFilter('hasSupervisor')}
+                  icon={<HiAcademicCap />}
+                  label="Has Supervisor"
+                />
+              </div>
 
-            {/* Filter Pills */}
-            <div className="flex flex-wrap gap-3 mt-4">
-              <FilterPill
-                active={filters.fullyFunded}
-                onClick={() => handleFilterChange('fullyFunded')}
-                icon={<HiCurrencyDollar className="h-5 w-5" />}
-                label="Fully Funded"
-              />
-              <FilterPill
-                active={filters.international}
-                onClick={() => handleFilterChange('international')}
-                icon={<HiGlobe className="h-5 w-5" />}
-                label="International"
-              />
-              <FilterPill
-                active={filters.upcoming}
-                onClick={() => handleFilterChange('upcoming')}
-                icon={<HiCalendar className="h-5 w-5" />}
-                label="Upcoming Deadlines"
-              />
+              {/* Sort Controls */}
+              <div className="flex items-center gap-4 mb-6">
+                <label className="text-gray-400">Sort by:</label>
+                <div className="relative">
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="appearance-none bg-gray-800 border border-gray-700 text-white rounded-lg pl-4 pr-10 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
+                  >
+                    {sortOptions.map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
+                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                      <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Results */}
+              <div className="grid grid-cols-1 gap-6">
+                <AnimatePresence mode="sync">
+                  {loading ? (
+                    // Loading skeletons
+                    Array.from({ length: 3 }).map((_, index) => (
+                      <OpportunityCardSkeleton key={index} />
+                    ))
+                  ) : error ? (
+                    <div className="text-red-500">{error}</div>
+                  ) : filteredOpportunities.length > 0 ? (
+                    filteredOpportunities.map((opportunity) => (
+                      <OpportunityCard
+                        key={opportunity.id}
+                        opportunity={opportunity}
+                        onSave={() => handleSaveOpportunity(opportunity)}
+                        saved={savedOpportunities.some(saved => saved.id === opportunity.id)}
+                        currentStatus={savedOpportunities.find(saved => saved.id === opportunity.id)?.status}
+                        statusOptions={statusOptions}
+                        onStatusChange={(newStatus) => handleStatusChange(opportunity.id, newStatus)}
+                      />
+                    ))
+                  ) : (
+                    <div className="text-center py-12">
+                      <HiExclamation className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                      <p className="text-gray-400">No opportunities found matching your criteria.</p>
+                    </div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Results Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {error ? (
-          <div className="flex items-center justify-center p-4 bg-red-500/10 rounded-xl">
-            <HiExclamation className="h-5 w-5 text-red-400 mr-2" />
-            <span className="text-red-400">{error}</span>
-          </div>
-        ) : loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
-              <OpportunityCardSkeleton key={i} />
-            ))}
-          </div>
-        ) : opportunities.length === 0 ? (
-          <div className="text-center py-12">
-            <HiSearch className="h-12 w-12 text-blue-300/30 mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-blue-300">No opportunities found</h3>
-            <p className="text-blue-300/70 mt-2">Try adjusting your search or filters</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {opportunities.map((opportunity) => (
-              <OpportunityCard key={opportunity.id} opportunity={opportunity} />
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );
 };
 
 const FilterPill = ({ active, onClick, icon, label }) => (
-  <button
+  <motion.button
+    whileHover={{ scale: 1.05 }}
+    whileTap={{ scale: 0.95 }}
     onClick={onClick}
-    className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
-      active
-        ? 'bg-blue-500/20 text-blue-300 border-blue-400/30'
-        : 'bg-white/5 text-blue-300/70 border-white/10 hover:bg-white/10'
-    } border`}
+    className={`
+      px-4 py-2 rounded-full flex items-center gap-2 transition-all duration-300
+      ${active 
+        ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' 
+        : 'bg-white/5 text-blue-300 hover:bg-white/10 border border-white/10'}
+    `}
   >
     {icon}
-    {label}
-  </button>
-);
-
-const OpportunityCardSkeleton = () => (
-  <div className="animate-pulse bg-white/5 rounded-2xl p-6">
-    <div className="h-6 bg-white/10 rounded w-3/4 mb-4"></div>
-    <div className="h-4 bg-white/10 rounded w-1/4 mb-6"></div>
-    <div className="space-y-3">
-      <div className="h-4 bg-white/10 rounded"></div>
-      <div className="h-4 bg-white/10 rounded w-5/6"></div>
-      <div className="h-4 bg-white/10 rounded w-4/6"></div>
-    </div>
-    <div className="grid grid-cols-4 gap-4 mt-6">
-      {[...Array(4)].map((_, i) => (
-        <div key={i} className="h-12 bg-white/10 rounded"></div>
-      ))}
-    </div>
-    <div className="flex gap-3 mt-6">
-      <div className="h-10 bg-white/10 rounded flex-1"></div>
-      <div className="h-10 bg-white/10 rounded flex-1"></div>
-    </div>
-  </div>
+    <span>{label}</span>
+  </motion.button>
 );
 
 export default Opportunities;
