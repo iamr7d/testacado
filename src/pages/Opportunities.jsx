@@ -50,6 +50,25 @@ const Opportunities = () => {
   }, [savedOpportunities]);
 
   useEffect(() => {
+    const fetchOpportunities = async () => {
+      try {
+        setLoading(true);
+        const data = await scrapePhdData('', filters);
+        setOpportunities(data);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching opportunities:', err);
+        setError('Failed to load opportunities. Please try again later.');
+        toast.error('Failed to load opportunities');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOpportunities();
+  }, [filters]);
+
+  useEffect(() => {
     const calculateScores = async () => {
       if (!opportunities.length) return;
       
@@ -237,112 +256,105 @@ const Opportunities = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Search Section */}
           <div className="container mx-auto px-4 py-8">
-            <div className="max-w-4xl mx-auto">
-              {/* Search Bar */}
-              <div className="relative mb-6">
-                <div className="flex gap-2">
-                  <div className="flex-1 relative">
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      placeholder="Search for PhD opportunities..."
-                      className="w-full px-4 py-3 rounded-lg bg-white/10 border border-blue-500/30 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                    <HiSearch className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                  </div>
-                  <button
-                    onClick={handleSearch}
-                    className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors"
-                  >
-                    Search
-                  </button>
+            {/* Search and filters section */}
+            <div className="mb-8">
+              <div className="flex flex-col md:flex-row gap-4 items-center mb-6">
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    placeholder="Search for PhD opportunities..."
+                    className="w-full pl-10 pr-4 py-2 bg-[#1a1a3a] border border-blue-500/10 rounded-xl focus:outline-none focus:border-blue-500/50"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                  <HiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-500/50" size={20} />
                 </div>
               </div>
 
-              {/* Filters */}
-              <div className="flex flex-wrap gap-3 mb-8">
+              {/* Filter pills */}
+              <div className="flex flex-wrap gap-2">
                 <FilterPill
                   active={filters.fullyFunded}
                   onClick={() => toggleFilter('fullyFunded')}
-                  icon={<HiCurrencyDollar />}
+                  icon={HiCurrencyDollar}
                   label="Fully Funded"
                 />
                 <FilterPill
                   active={filters.international}
                   onClick={() => toggleFilter('international')}
-                  icon={<HiGlobe />}
+                  icon={HiGlobe}
                   label="International"
                 />
                 <FilterPill
                   active={filters.hasDeadline}
                   onClick={() => toggleFilter('hasDeadline')}
-                  icon={<HiCalendar />}
+                  icon={HiCalendar}
                   label="Has Deadline"
                 />
                 <FilterPill
                   active={filters.hasSupervisor}
                   onClick={() => toggleFilter('hasSupervisor')}
-                  icon={<HiAcademicCap />}
+                  icon={HiAcademicCap}
                   label="Has Supervisor"
                 />
               </div>
+            </div>
 
-              {/* Sort Controls */}
-              <div className="flex items-center gap-4 mb-6">
-                <label className="text-gray-400">Sort by:</label>
-                <div className="relative">
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                    className="appearance-none bg-gray-800 border border-gray-700 text-white rounded-lg pl-4 pr-10 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
-                  >
-                    {sortOptions.map(option => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                      <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                    </svg>
-                  </div>
-                </div>
+            {/* Loading state */}
+            {loading && (
+              <div className="grid gap-6 md:grid-cols-1">
+                {[1, 2, 3].map((n) => (
+                  <OpportunityCardSkeleton key={n} />
+                ))}
               </div>
+            )}
 
-              {/* Results */}
-              <div className="grid grid-cols-1 gap-6">
-                <AnimatePresence mode="sync">
-                  {loading ? (
-                    // Loading skeletons
-                    Array.from({ length: 3 }).map((_, index) => (
-                      <OpportunityCardSkeleton key={index} />
-                    ))
-                  ) : error ? (
-                    <div className="text-red-500">{error}</div>
-                  ) : filteredOpportunities.length > 0 ? (
-                    filteredOpportunities.map((opportunity) => (
+            {/* Error state */}
+            {error && !loading && (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <HiExclamation className="text-red-500 w-12 h-12 mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Oops! Something went wrong</h3>
+                <p className="text-gray-400 mb-4">{error}</p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                >
+                  Try Again
+                </button>
+              </div>
+            )}
+
+            {/* No results state */}
+            {!loading && !error && opportunities.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <HiSearch className="text-blue-500/50 w-12 h-12 mb-4" />
+                <h3 className="text-xl font-semibold mb-2">No opportunities found</h3>
+                <p className="text-gray-400">Try adjusting your search or filters</p>
+              </div>
+            )}
+
+            {/* Results */}
+            {!loading && !error && opportunities.length > 0 && (
+              <motion.div
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+                className="grid gap-6 md:grid-cols-1"
+              >
+                <AnimatePresence>
+                  {getSortedAndFilteredOpportunities().map((opportunity) => (
+                    <motion.div key={opportunity.id} variants={itemVariants}>
                       <OpportunityCard
-                        key={opportunity.id}
                         opportunity={opportunity}
                         onSave={() => handleSaveOpportunity(opportunity)}
                         saved={savedOpportunities.some(saved => saved.id === opportunity.id)}
-                        currentStatus={savedOpportunities.find(saved => saved.id === opportunity.id)?.status}
                         statusOptions={statusOptions}
-                        onStatusChange={(newStatus) => handleStatusChange(opportunity.id, newStatus)}
                       />
-                    ))
-                  ) : (
-                    <div className="text-center py-12">
-                      <HiExclamation className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                      <p className="text-gray-400">No opportunities found matching your criteria.</p>
-                    </div>
-                  )}
+                    </motion.div>
+                  ))}
                 </AnimatePresence>
-              </div>
-            </div>
+              </motion.div>
+            )}
           </div>
         </div>
       </div>
