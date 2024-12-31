@@ -4,7 +4,7 @@ import {
   calculateDummyCompatibility 
 } from './dummyService';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3005/api';
+const API_BASE_URL = 'http://localhost:3005/api';
 
 // Helper function to parse funding information
 const parseFundingInfo = (fundingText) => {
