@@ -1,6 +1,7 @@
 [build]
   command = "npm run build"
   publish = "dist"
+  base = "/"
 
 [[redirects]]
   from = "/*"
@@ -9,3 +10,4 @@
 
 [build.environment]
   NODE_VERSION = "18"
+  CI = "false"
