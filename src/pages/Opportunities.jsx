@@ -335,9 +335,13 @@ const Opportunities = () => {
                       />
                     ))
                   ) : (
-                    <div className="text-center py-12">
-                      <HiExclamation className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                      <p className="text-gray-400">No opportunities found matching your criteria.</p>
+                    <div className="flex flex-col items-center justify-center py-12 px-4">
+                      <HiExclamation className="w-16 h-16 text-gray-400 mb-4" />
+                      <h3 className="text-xl font-semibold text-gray-600 mb-2">No opportunities found</h3>
+                      <p className="text-gray-500 text-center max-w-md">
+                        Try searching for specific keywords like "Computer Science", "Machine Learning", 
+                        "Data Science", or any other field you're interested in.
+                      </p>
                     </div>
                   )}
                 </AnimatePresence>
