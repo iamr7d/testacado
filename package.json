@@ -9,17 +9,20 @@
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "server": "node server.js",
-    "test:llm": "node --experimental-modules test-llm.js"
+    "test:llm": "node --experimental-modules test-llm.js",
+    "test:gemini": "node --experimental-modules test-gemini.js"
   },
   "dependencies": {
     "@emotion/react": "^11.11.3",
     "@emotion/styled": "^11.11.0",
+    "@google/generative-ai": "^0.24.0",
     "@headlessui/react": "^2.2.0",
     "@heroicons/react": "^2.2.0",
     "@lottiefiles/dotlottie-react": "^0.11.0",
     "@mui/material": "^5.15.3",
     "@tailwindcss/forms": "^0.5.7",
     "axios": "^1.7.9",
+    "bootstrap": "^5.3.3",
     "cheerio": "^1.0.0",
     "cors": "^2.8.5",
     "date-fns": "^2.30.0",
@@ -27,6 +30,7 @@
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.0",
     "framer-motion": "^10.17.9",
+    "google-scholar": "^1.5.1",
     "groq": "^3.68.1",
     "groq-sdk": "^0.3.3",
     "http-proxy-middleware": "^2.0.7",
@@ -36,6 +40,7 @@
     "puppeteer": "^21.11.0",
     "react": "^18.2.0",
     "react-big-calendar": "^1.8.5",
+    "react-bootstrap": "^2.10.9",
     "react-calendar": "^5.1.0",
     "react-dom": "^18.2.0",
     "react-error-boundary": "^4.1.2",
@@ -43,6 +48,8 @@
     "react-icons": "^4.12.0",
     "react-router-dom": "^6.21.1",
     "react-toastify": "^11.0.1",
+    "recharts": "^2.15.1",
+    "scholarly": "^1.1.1",
     "three": "^0.160.1"
   },
   "devDependencies": {
