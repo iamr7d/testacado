@@ -3,11 +3,34 @@
   publish = "dist"
   base = "/"
 
+# Handle SPA routing
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
+# Proxy API requests to backend when deployed
+[[redirects]]
+  from = "/api/*"
+  to = "https://trainacado-api.render.com/api/:splat"
+  status = 200
+  force = true
+  headers = {Access-Control-Allow-Origin = "*"}
+
+# Handle CORS preflight requests
+[[headers]]
+  for = "/*"
+  [headers.values]
+  Access-Control-Allow-Origin = "*"
+  Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+  Access-Control-Allow-Headers = "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+
 [build.environment]
   NODE_VERSION = "18"
   CI = "false"
+  NPM_FLAGS = "--legacy-peer-deps"
+
+# Function settings for serverless functions if needed
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"

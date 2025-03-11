@@ -1,0 +1,6 @@
+# Netlify redirects file
+# Handle SPA routing
+/*    /index.html   200
+
+# Proxy API requests to backend when deployed
+/api/*  https://trainacado-api.render.com/api/:splat  200!

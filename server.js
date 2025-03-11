@@ -1,4 +1,3 @@
-import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
 dotenv.config();
@@ -9,6 +8,7 @@ import { dirname } from 'path';
 import path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import cors from 'cors';
 import { getGeminiCompletion } from './src/services/geminiService.js';
 import { fetchScholarMetrics, simplifyScholarMetrics } from './src/services/scholarService.js';
 import { professorDatabase } from './src/data/professorData.js';
@@ -1259,15 +1259,17 @@ app.post('/api/ai/research-trends', async (req, res) => {
   }
 });
 
-// Start server
-const server = app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-  console.log(`API available at http://localhost:${port}/api`);
-});
-
-process.on('SIGINT', () => {
-  server.close();
-  process.exit(0);
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0',
+    services: {
+      geminiAI: process.env.GEMINI_API_KEY ? 'configured' : 'not configured',
+      database: 'connected'
+    }
+  });
 });
 
 // Helper function to get Google Scholar metrics
@@ -1406,3 +1408,14 @@ function formatScholarMetrics(metrics) {
     topPublications: metrics.topPublications
   };
 }
+
+// Start server
+const server = app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+  console.log(`API available at http://localhost:${port}/api`);
+});
+
+process.on('SIGINT', () => {
+  server.close();
+  process.exit(0);
+});
